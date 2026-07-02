@@ -1,26 +1,37 @@
 /*
 ==================================================
-  SLAYER TERMINAL - SIMULATION ENGINE (simulator.js)
+  SLAYER TERMINAL - SIMULATION ENGINE (simulator.ts)
   Options Physics, Greeks Math, & Live Ticker Feed
 ==================================================
 */
 
+import type {
+  Greeks,
+  Indicators,
+  MarketSnapshot,
+  StrikeNode,
+  TapeOrder,
+  TickerConfig,
+  TickerSymbol,
+  TradePlan,
+} from '../types/market';
+
 const Simulator = (() => {
   // Math Helpers
-  function normalCDF(x) {
+  function normalCDF(x: number): number {
     const t = 1 / (1 + 0.2316419 * Math.abs(x));
     const d = 0.3989422804 * Math.exp(-x * x / 2);
     const p = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
     return x >= 0 ? 1 - d * p : d * p;
   }
 
-  function normalPDF(x) {
+  function normalPDF(x: number): number {
     return Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI);
   }
 
   // Black-Scholes Greeks Calculator
   // S: Spot, K: Strike, t: Time to expiry in years, v: Implied Volatility, r: Risk-free rate
-  function calculateGreeks(S, K, t, v, r = 0.05) {
+  function calculateGreeks(S: number, K: number, t: number, v: number, r = 0.05): Greeks {
     if (t <= 0) t = 0.0001; // Avoid division by zero
     if (v <= 0) v = 0.01;
 
@@ -28,7 +39,6 @@ const Simulator = (() => {
     const d2 = d1 - v * Math.sqrt(t);
 
     const Nd1 = normalCDF(d1);
-    const Nd2 = normalCDF(d2);
     const Np_d1 = normalPDF(d1);
 
     // Delta
@@ -60,19 +70,21 @@ const Simulator = (() => {
   }
 
   // Configured Tick States
-  const TICKERS = {
+  const TICKERS: Record<TickerSymbol, TickerConfig> = {
     SPY: { basePrice: 500, currentPrice: 500, iv: 0.15, step: 1 },
     QQQ: { basePrice: 440, currentPrice: 440, iv: 0.18, step: 1 },
     AAPL: { basePrice: 190, currentPrice: 190, iv: 0.20, step: 0.5 },
     NVDA: { basePrice: 120, currentPrice: 120, iv: 0.35, step: 0.5 }
   };
 
-  let activeTicker = 'SPY';
-  let priceHistory = { SPY: [], QQQ: [], AAPL: [], NVDA: [] };
+  const TICKER_KEYS = Object.keys(TICKERS) as TickerSymbol[];
+
+  let activeTicker: TickerSymbol = 'SPY';
+  const priceHistory: Record<TickerSymbol, number[]> = { SPY: [], QQQ: [], AAPL: [], NVDA: [] };
   const historyLimit = 100;
 
   // Initialize historical price buffer with realistic values
-  Object.keys(TICKERS).forEach(ticker => {
+  TICKER_KEYS.forEach(ticker => {
     let p = TICKERS[ticker].basePrice;
     for (let i = 0; i < historyLimit; i++) {
       p += (Math.random() - 0.5) * TICKERS[ticker].step * 0.5;
@@ -82,12 +94,12 @@ const Simulator = (() => {
   });
 
   // Calculate Indicators
-  function getIndicators(prices) {
+  function getIndicators(prices: number[]): Indicators {
     const len = prices.length;
-    if (len < 50) return { rsi: 50, ema9: prices[len-1], ema21: prices[len-1], ema50: prices[len-1], squeeze: false };
+    if (len < 50) return { rsi: 50, ema9: prices[len - 1], ema21: prices[len - 1], ema50: prices[len - 1], squeeze: false };
 
     // EMA
-    const calcEMA = (period, prevEMA, curPrice) => {
+    const calcEMA = (period: number, prevEMA: number, curPrice: number): number => {
       const k = 2 / (period + 1);
       return curPrice * k + prevEMA * (1 - k);
     };
@@ -106,7 +118,7 @@ const Simulator = (() => {
     let gains = 0;
     let losses = 0;
     for (let i = len - 14; i < len; i++) {
-      const diff = prices[i] - prices[i-1];
+      const diff = prices[i] - prices[i - 1];
       if (diff > 0) gains += diff;
       else losses -= diff;
     }
@@ -119,8 +131,8 @@ const Simulator = (() => {
 
     // TTM Squeeze Approximation: Bollinger Bands inside Keltner Channel
     const slice = prices.slice(-20);
-    const sma20 = slice.reduce((a,b) => a+b, 0) / 20;
-    const variance = slice.reduce((a,b) => a + Math.pow(b - sma20, 2), 0) / 20;
+    const sma20 = slice.reduce((a, b) => a + b, 0) / 20;
+    const variance = slice.reduce((a, b) => a + Math.pow(b - sma20, 2), 0) / 20;
     const stdDev = Math.sqrt(variance);
     const atrProxy = stdDev * 0.9; // Simplified range proxy
 
@@ -135,22 +147,22 @@ const Simulator = (() => {
   }
 
   // Generate Strike-by-Strike Chain
-  function generateOptionsChain(tickerKey) {
+  function generateOptionsChain(tickerKey: TickerSymbol): StrikeNode[] {
     const config = TICKERS[tickerKey];
     const spot = config.currentPrice;
     const step = config.step;
     const iv = config.iv;
-    
-    const strikes = [];
+
+    const strikes: StrikeNode[] = [];
     const baseStrike = Math.round(spot / step) * step;
     const strikeRange = 15;
 
     for (let i = -strikeRange; i <= strikeRange; i++) {
       const strike = baseStrike + i * step;
-      
+
       const distance = Math.abs(strike - spot) / spot;
       const baseOI = Math.max(100, Math.round(20000 * Math.exp(-Math.pow(distance * 15, 2))));
-      
+
       let callOI = Math.round(baseOI * (i > 0 ? 1.4 : 0.8));
       let putOI = Math.round(baseOI * (i < 0 ? 1.6 : 0.7));
 
@@ -164,12 +176,12 @@ const Simulator = (() => {
 
       const dealerCallDirection = -0.4; // Net short calls
       const dealerPutDirection = -0.6;  // Net short puts
-      
+
       const callGex = callOI * 100 * greeks.gamma * spot * spot * 0.01 * dealerCallDirection;
       const putGex = putOI * 100 * greeks.gamma * spot * spot * 0.01 * dealerPutDirection * -1;
 
-      const netGex = callGex + putGex; 
-      
+      const netGex = callGex + putGex;
+
       const callDex = callOI * 100 * greeks.deltaCall * spot * dealerCallDirection;
       const putDex = putOI * 100 * greeks.deltaPut * spot * dealerPutDirection;
       const netDex = callDex + putDex;
@@ -197,9 +209,9 @@ const Simulator = (() => {
   }
 
   // Generate Sky's Vision Plan
-  function generateTradePlan(tickerKey, spot, chain, indicators) {
+  function generateTradePlan(tickerKey: TickerSymbol, spot: number, chain: StrikeNode[], indicators: Indicators): TradePlan {
     const config = TICKERS[tickerKey];
-    
+
     let supportWall = spot - config.step * 4;
     let resistanceWall = spot + config.step * 4;
     let maxPutGex = 0;
@@ -218,8 +230,8 @@ const Simulator = (() => {
 
     let flipStrike = spot;
     for (let i = 1; i < chain.length; i++) {
-      if (Math.sign(chain[i-1].netGex) !== Math.sign(chain[i].netGex)) {
-        flipStrike = (chain[i-1].strike + chain[i].strike) / 2;
+      if (Math.sign(chain[i - 1].netGex) !== Math.sign(chain[i].netGex)) {
+        flipStrike = (chain[i - 1].strike + chain[i].strike) / 2;
         break;
       }
     }
@@ -227,7 +239,7 @@ const Simulator = (() => {
     let score = 50;
     const isEmaAligned = (indicators.ema9 > indicators.ema21) && (indicators.ema21 > indicators.ema50);
     const isEmaBearish = (indicators.ema9 < indicators.ema21) && (indicators.ema21 < indicators.ema50);
-    
+
     if (isEmaAligned) score += 20;
     if (isEmaBearish) score -= 20;
 
@@ -245,10 +257,10 @@ const Simulator = (() => {
     const direction = score >= 50 ? 'BULLISH' : 'BEARISH';
     const confidence = Math.abs(score - 50) * 2 + 50;
 
-    let entry = spot;
+    const entry = spot;
     let stopLoss = direction === 'BULLISH' ? supportWall - config.step * 0.5 : resistanceWall + config.step * 0.5;
-    let target1 = direction === 'BULLISH' ? resistanceWall : supportWall;
-    let target2 = direction === 'BULLISH' ? resistanceWall + config.step * 3 : supportWall - config.step * 3;
+    const target1 = direction === 'BULLISH' ? resistanceWall : supportWall;
+    const target2 = direction === 'BULLISH' ? resistanceWall + config.step * 3 : supportWall - config.step * 3;
 
     const minDistance = spot * 0.005;
     if (Math.abs(entry - stopLoss) < minDistance) {
@@ -271,41 +283,42 @@ const Simulator = (() => {
   }
 
   // Simulate one tick
-  function tick(callback) {
-    Object.keys(TICKERS).forEach(ticker => {
+  function tick(callback?: (data: MarketSnapshot) => void): void {
+    TICKER_KEYS.forEach(ticker => {
       const config = TICKERS[ticker];
       const history = priceHistory[ticker];
 
       const drift = 0.02 * (Math.random() - 0.48);
       const volatility = config.iv * 0.15;
       const shock = Math.random() > 0.98 ? (Math.random() - 0.5) * 3 : 1;
-      
+
       let deltaPrice = (drift + (Math.random() - 0.5) * volatility * shock) * config.basePrice * 0.01;
       deltaPrice = Math.max(-config.step * 2, Math.min(config.step * 2, deltaPrice));
-      
+
       config.currentPrice = Number((config.currentPrice + deltaPrice).toFixed(2));
-      
+
       history.push(config.currentPrice);
       if (history.length > historyLimit) {
         history.shift();
       }
     });
 
+    const activeConfig = TICKERS[activeTicker];
     const chain = generateOptionsChain(activeTicker);
     const indicators = getIndicators(priceHistory[activeTicker]);
-    const plan = generateTradePlan(activeTicker, TICKERS[activeTicker].currentPrice, chain, indicators);
+    const plan = generateTradePlan(activeTicker, activeConfig.currentPrice, chain, indicators);
 
-    const tape = [];
-    const activePrice = TICKERS[activeTicker].currentPrice;
+    const tape: TapeOrder[] = [];
+    const activePrice = activeConfig.currentPrice;
     const numOrders = Math.floor(Math.random() * 3) + 1;
 
     for (let i = 0; i < numOrders; i++) {
-      const offset = (Math.floor(Math.random() * 7) - 3) * TICKERS[activeTicker].step;
-      const strike = Math.round(activePrice / TICKERS[activeTicker].step) * TICKERS[activeTicker].step + offset;
+      const offset = (Math.floor(Math.random() * 7) - 3) * activeConfig.step;
+      const strike = Math.round(activePrice / activeConfig.step) * activeConfig.step + offset;
       const isCall = Math.random() > 0.5;
       const size = Math.floor(Math.random() * 250) + 10;
       const orderType = Math.random() > 0.65 ? 'SWEEP' : 'BLOCK';
-      
+
       tape.push({
         time: new Date().toLocaleTimeString(),
         ticker: activeTicker,
@@ -320,7 +333,8 @@ const Simulator = (() => {
     if (callback) {
       callback({
         ticker: activeTicker,
-        spot: TICKERS[activeTicker].currentPrice,
+        spot: activeConfig.currentPrice,
+        changePercent: ((activeConfig.currentPrice - activeConfig.basePrice) / activeConfig.basePrice) * 100,
         priceHistory: priceHistory[activeTicker],
         chain,
         indicators,
@@ -330,10 +344,14 @@ const Simulator = (() => {
     }
   }
 
+  function isTickerSymbol(t: string): t is TickerSymbol {
+    return t in TICKERS;
+  }
+
   return {
     TICKERS,
-    setActiveTicker: (t) => { if (TICKERS[t]) activeTicker = t; },
-    getActiveTicker: () => activeTicker,
+    setActiveTicker: (t: string): void => { if (isTickerSymbol(t)) activeTicker = t; },
+    getActiveTicker: (): TickerSymbol => activeTicker,
     tick,
     getGreeks: calculateGreeks
   };

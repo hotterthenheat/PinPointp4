@@ -1,19 +1,21 @@
 /*
 ==================================================
-  SLAYER TERMINAL - AUDITING LEDGER (auditor.js)
+  SLAYER TERMINAL - AUDITING LEDGER (auditor.ts)
   Self-Auditing Trade Journal & Performance Statistics
 ==================================================
 */
 
-const Auditor = (() => {
-  let activeTrades = [];
-  let closedTrades = [];
+import type { ExecuteResult, LedgerStats, TradePlan, TradeRecord, TradeStatus } from '../types/market';
 
-  function loadFromStorage() {
+const Auditor = (() => {
+  let activeTrades: TradeRecord[] = [];
+  let closedTrades: TradeRecord[] = [];
+
+  function loadFromStorage(): void {
     try {
       const storedClosed = localStorage.getItem('slayer_closed_trades');
       if (storedClosed) {
-        closedTrades = JSON.parse(storedClosed);
+        closedTrades = JSON.parse(storedClosed) as TradeRecord[];
       } else {
         closedTrades = [
           {
@@ -63,7 +65,7 @@ const Auditor = (() => {
     }
   }
 
-  function saveToStorage() {
+  function saveToStorage(): void {
     try {
       localStorage.setItem('slayer_closed_trades', JSON.stringify(closedTrades));
     } catch (e) {
@@ -71,12 +73,12 @@ const Auditor = (() => {
     }
   }
 
-  function executePlan(plan) {
+  function executePlan(plan: TradePlan): ExecuteResult {
     if (activeTrades.some(t => t.ticker === plan.ticker)) {
       return { success: false, message: `Trade already active for ${plan.ticker}` };
     }
 
-    const trade = {
+    const trade: TradeRecord = {
       id: 'TRD-' + Math.floor(Math.random() * 9000 + 1000),
       ticker: plan.ticker,
       direction: plan.direction,
@@ -93,7 +95,7 @@ const Auditor = (() => {
     return { success: true, trade };
   }
 
-  function updateOpenTrades(ticker, currentPrice) {
+  function updateOpenTrades(ticker: string, currentPrice: number): boolean {
     let updated = false;
 
     activeTrades = activeTrades.filter(trade => {
@@ -104,7 +106,7 @@ const Auditor = (() => {
 
       // Check exit triggers
       let exitMatched = false;
-      let status = 'OPEN';
+      let status: TradeStatus = 'OPEN';
       let exitPrice = currentPrice;
 
       if (trade.direction === 'BULLISH') {
@@ -133,11 +135,10 @@ const Auditor = (() => {
         trade.status = status;
         trade.exitPrice = exitPrice;
         trade.pnl = (exitPrice - trade.entryPrice) * pnlFactor * 100;
-        
+
         const priceSpan = Math.abs(trade.target - trade.entryPrice);
-        const exitSpan = Math.abs(exitPrice - trade.entryPrice);
         trade.accuracy = priceSpan > 0 ? Math.min(100, Math.max(0, Math.round((1 - Math.abs(exitPrice - trade.target) / priceSpan) * 100))) : 100;
-        
+
         trade.time = new Date().toISOString().replace('T', ' ').substring(0, 19);
         closedTrades.unshift(trade);
         saveToStorage();
@@ -151,15 +152,15 @@ const Auditor = (() => {
     return updated;
   }
 
-  function getStats() {
+  function getStats(): LedgerStats {
     const total = closedTrades.length;
     if (total === 0) return { winRate: 0, profitFactor: 0, avgAccuracy: 0, totalPnL: 0, count: 0 };
 
     const wins = closedTrades.filter(t => t.status === 'WIN');
     const winRate = (wins.length / total) * 100;
 
-    let grossGains = wins.reduce((sum, t) => sum + t.pnl, 0);
-    let grossLosses = Math.abs(closedTrades.filter(t => t.status === 'LOSS').reduce((sum, t) => sum + t.pnl, 0));
+    const grossGains = wins.reduce((sum, t) => sum + t.pnl, 0);
+    const grossLosses = Math.abs(closedTrades.filter(t => t.status === 'LOSS').reduce((sum, t) => sum + t.pnl, 0));
     const profitFactor = grossLosses === 0 ? grossGains : grossGains / grossLosses;
 
     const avgAccuracy = closedTrades.reduce((sum, t) => sum + t.accuracy, 0) / total;
@@ -174,7 +175,7 @@ const Auditor = (() => {
     };
   }
 
-  function clearHistory() {
+  function clearHistory(): void {
     closedTrades = [];
     activeTrades = [];
     saveToStorage();
@@ -182,8 +183,8 @@ const Auditor = (() => {
 
   return {
     loadFromStorage,
-    getActiveTrades: () => activeTrades,
-    getClosedTrades: () => closedTrades,
+    getActiveTrades: (): TradeRecord[] => activeTrades,
+    getClosedTrades: (): TradeRecord[] => closedTrades,
     executePlan,
     updateOpenTrades,
     getStats,

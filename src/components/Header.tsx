@@ -7,7 +7,7 @@ const Header = () => {
   const { isConsoleLaunched, setIsConsoleLaunched } = useMarketData();
   const location = useLocation();
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path;
 
   const handleLogoClick = () => {
     setIsConsoleLaunched(false);

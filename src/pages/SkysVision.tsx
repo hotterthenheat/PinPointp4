@@ -6,7 +6,7 @@ import { Play, TrendingUp, Sliders, Activity } from 'lucide-react';
 
 const SkysVision = () => {
   const { activeTicker, marketData, changeTicker, executeTrade } = useMarketData();
-  const cockpitCanvasRef = useRef(null);
+  const cockpitCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Parameter State Sliders
   const [emaThreshold, setEmaThreshold] = useState(1.2);
@@ -23,10 +23,10 @@ const SkysVision = () => {
 
   const handleExecuteHedge = () => {
     const res = executeTrade();
-    if (res.success) {
+    if (res.success && res.trade) {
       alert(`Hedge executed successfully! Transaction ID: ${res.trade.id}`);
     } else {
-      alert(res.message);
+      alert(res.message ?? 'Trade execution failed');
     }
   };
 

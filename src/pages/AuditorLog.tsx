@@ -143,7 +143,7 @@ const AuditorLog = () => {
                       </span>
                     </div>
                     <div className="flex justify-between text-textSecondary text-[10px]">
-                      <span>Exit: ${trade.exitPrice.toFixed(2)} (Acc: {trade.accuracy}%)</span>
+                      <span>Exit: ${trade.exitPrice?.toFixed(2) ?? '--'} (Acc: {trade.accuracy}%)</span>
                       <span>{trade.time}</span>
                     </div>
                   </div>

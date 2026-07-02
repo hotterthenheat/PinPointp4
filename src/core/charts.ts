@@ -1,35 +1,39 @@
 /*
 ==================================================
-  SLAYER TERMINAL - CHARTING ENGINE (charts.js)
+  SLAYER TERMINAL - CHARTING ENGINE (charts.ts)
   Vercel Monochrome Layout Configuration
 ==================================================
 */
 
+import type { StrikeNode, TradePlan } from '../types/market';
+
+// Chart.js ships via CDN <script> (see index.html), so instances are untyped
+type ChartInstance = any;
+
 const Charts = (() => {
-  let gexChartInstance = null;
-  let cockpitChartInstance = null;
+  let gexChartInstance: ChartInstance | null = null;
+  let cockpitChartInstance: ChartInstance | null = null;
 
   // Vercel-inspired monochrome color scheme with essential status colors
   const COLOR_POS = '#10b981';
   const COLOR_NEG = '#f43f5e';
-  const COLOR_PRIMARY = '#ffffff';
   const COLOR_SECONDARY = '#ffffff';
   const COLOR_TEXT = '#888888';
   const COLOR_BORDER = '#1f1f1f';
 
   // 1. PINPOINT GEX BAR CHART
-  function updateGexChart(canvasElement, chain, spotPrice) {
+  function updateGexChart(canvasElement: HTMLCanvasElement | null, chain: StrikeNode[], spotPrice: number): void {
     if (!canvasElement) return;
-    
+
     // Resolve Chart from global window object
     const Chart = window.Chart;
     if (!Chart) return;
 
     const sortedChain = [...chain].sort((a, b) => a.strike - b.strike);
     const spotIndex = sortedChain.findIndex(node => node.strike >= spotPrice);
-    
-    let sliceStart = Math.max(0, spotIndex - 8);
-    let sliceEnd = Math.min(sortedChain.length, spotIndex + 9);
+
+    const sliceStart = Math.max(0, spotIndex - 8);
+    const sliceEnd = Math.min(sortedChain.length, spotIndex + 9);
     const displayChain = sortedChain.slice(sliceStart, sliceEnd);
 
     const labels = displayChain.map(n => `$${n.strike.toFixed(2)}`);
@@ -60,11 +64,11 @@ const Charts = (() => {
         id: 'customSpot',
         spotPrice: spotPrice,
         displayChain: displayChain,
-        afterDraw: (chart) => {
-          const { ctx, chartArea: { left, right, top, bottom }, scales: { y } } = chart;
-          const spot = chart.options.plugins.customSpot.spotPrice;
-          const chainSlice = chart.options.plugins.customSpot.displayChain;
-          
+        afterDraw: (chart: ChartInstance) => {
+          const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+          const spot: number = chart.options.plugins.customSpot.spotPrice;
+          const chainSlice: StrikeNode[] = chart.options.plugins.customSpot.displayChain;
+
           if (!chainSlice || chainSlice.length === 0) return;
 
           let yVal = -1;
@@ -89,7 +93,7 @@ const Charts = (() => {
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 1.25;
           ctx.setLineDash([3, 3]);
-          
+
           ctx.beginPath();
           ctx.moveTo(left, yVal);
           ctx.lineTo(right, yVal);
@@ -114,10 +118,10 @@ const Charts = (() => {
           scales: {
             x: {
               grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: { 
-                color: COLOR_TEXT, 
+              ticks: {
+                color: COLOR_TEXT,
                 font: { family: 'JetBrains Mono', size: 9 },
-                callback: function(value) { return value.toFixed(1) + 'M'; }
+                callback: function (value: number) { return value.toFixed(1) + 'M'; }
               }
             },
             y: {
@@ -136,7 +140,7 @@ const Charts = (() => {
               titleFont: { family: 'Inter', weight: 'bold' },
               bodyFont: { family: 'JetBrains Mono' },
               callbacks: {
-                label: function(context) {
+                label: function (context: any) {
                   return ` GEX: ${context.parsed.x.toFixed(2)} M`;
                 }
               }
@@ -152,7 +156,7 @@ const Charts = (() => {
   }
 
   // 2. SKY'S VISION COCKPIT PRICE CHART
-  function updateCockpitChart(canvasElement, priceHistory, plan) {
+  function updateCockpitChart(canvasElement: HTMLCanvasElement | null, priceHistory: number[], plan: TradePlan | null): void {
     if (!canvasElement) return;
 
     const Chart = window.Chart;
@@ -160,15 +164,15 @@ const Charts = (() => {
 
     const dataSlice = priceHistory.slice(-40);
     const indices = Array.from({ length: dataSlice.length }, (_, i) => i);
-    
-    const ema9 = [];
-    const ema21 = [];
-    let k9 = 2 / 10;
-    let k21 = 2 / 22;
-    
+
+    const ema9: number[] = [];
+    const ema21: number[] = [];
+    const k9 = 2 / 10;
+    const k21 = 2 / 22;
+
     let val9 = dataSlice[0];
     let val21 = dataSlice[0];
-    
+
     dataSlice.forEach(p => {
       val9 = p * k9 + val9 * (1 - k9);
       val21 = p * k21 + val21 * (1 - k21);
@@ -217,12 +221,12 @@ const Charts = (() => {
       const planOverlaysPlugin = {
         id: 'planOverlays',
         plan: plan,
-        afterDraw: (chart) => {
+        afterDraw: (chart: ChartInstance) => {
           const { ctx, chartArea: { left, right }, scales: { y } } = chart;
-          const activePlan = chart.options.plugins.planOverlays.plan;
+          const activePlan: TradePlan | null = chart.options.plugins.planOverlays.plan;
           if (!activePlan) return;
 
-          const drawHorizontalLine = (val, color, text, side = 'right') => {
+          const drawHorizontalLine = (val: number, color: string, text: string, side: 'left' | 'right' = 'right') => {
             const yPixel = y.getPixelForValue(val);
             if (yPixel < chart.chartArea.top || yPixel > chart.chartArea.bottom) return;
 
@@ -277,13 +281,15 @@ const Charts = (() => {
   }
 
   // 3. VANNA/CHARM MIGRATION HEATMAP (Custom HTML5 Canvas Renderer)
-  function renderVannaHeatmap(canvasElement, spotPrice, chain) {
+  function renderVannaHeatmap(canvasElement: HTMLCanvasElement | null, spotPrice: number, chain: StrikeNode[]): void {
     if (!canvasElement) return;
 
     const ctx = canvasElement.getContext('2d');
+    if (!ctx) return;
+
     const width = canvasElement.clientWidth;
     const height = canvasElement.clientHeight;
-    
+
     canvasElement.width = width;
     canvasElement.height = height;
 
@@ -304,18 +310,18 @@ const Charts = (() => {
     const cellHeight = plotHeight / gridRows;
 
     const netVannaBase = chain.reduce((acc, c) => acc + Math.abs(c.vanna), 0) / chain.length;
-    
+
     ctx.save();
     for (let r = 0; r < gridRows; r++) {
-      const dteFactor = (gridRows - r) / gridRows; 
-      
+      const dteFactor = (gridRows - r) / gridRows;
+
       for (let c = 0; c < gridCols; c++) {
         const spotDrift = ((c - (gridCols / 2)) / (gridCols / 2)) * 0.015;
-        
+
         const distanceVal = Math.exp(-Math.pow(spotDrift * 80, 2));
         const decayVal = Math.sqrt(dteFactor);
         const cellValue = netVannaBase * distanceVal * decayVal * 3000;
-        
+
         const sign = spotDrift >= 0 ? 1 : -1;
         const score = cellValue * sign;
 
@@ -356,7 +362,7 @@ const Charts = (() => {
     ctx.restore();
   }
 
-  function clearInstances() {
+  function clearInstances(): void {
     if (gexChartInstance) {
       gexChartInstance.destroy();
       gexChartInstance = null;

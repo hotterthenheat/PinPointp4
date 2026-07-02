@@ -23,9 +23,9 @@ const Home = () => {
   const [landingActiveTab, setLandingActiveTab] = useState(1);
 
   // Canvas Refs
-  const cockpitCanvasRef = useRef(null);
-  const gexCanvasRef = useRef(null);
-  const vannaCanvasRef = useRef(null);
+  const cockpitCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const gexCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const vannaCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Re-draw active tab charts on tick or tab change
   useEffect(() => {
@@ -48,10 +48,10 @@ const Home = () => {
   // Handle active trade executing
   const handleExecuteTrade = () => {
     const res = executeTrade();
-    if (res.success) {
+    if (res.success && res.trade) {
       alert(`Hedge executed successfully! Transaction ID: ${res.trade.id}`);
     } else {
-      alert(res.message);
+      alert(res.message ?? 'Trade execution failed');
     }
   };
 

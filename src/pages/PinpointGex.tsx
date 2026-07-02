@@ -7,8 +7,8 @@ import { BarChart2, Shield } from 'lucide-react';
 const PinpointGex = () => {
   const { activeTicker, marketData, changeTicker } = useMarketData();
 
-  const gexCanvasRef = useRef(null);
-  const vannaCanvasRef = useRef(null);
+  const gexCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const vannaCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     if (!marketData) return;

@@ -5,22 +5,22 @@ const TickerTape = () => {
   const { marketData } = useMarketData();
 
   // Spot prices fallback if simulator hasn't ticked yet
-  const getTickerPrice = (ticker, fallback) => {
+  const getTickerPrice = (ticker: string, fallback: string): string => {
     if (marketData && marketData.ticker === ticker) {
       return `$${marketData.spot.toFixed(2)}`;
     }
     return fallback;
   };
 
-  const getTickerChange = (ticker, fallback, isPositive) => {
-    if (marketData && marketData.ticker === ticker && marketData.changePercent !== undefined) {
+  const getTickerChange = (ticker: string, fallback: string): string => {
+    if (marketData && marketData.ticker === ticker) {
       return `${marketData.changePercent >= 0 ? '+' : ''}${marketData.changePercent.toFixed(2)}%`;
     }
     return fallback;
   };
 
-  const isTickerPositive = (ticker, fallbackBool) => {
-    if (marketData && marketData.ticker === ticker && marketData.changePercent !== undefined) {
+  const isTickerPositive = (ticker: string, fallbackBool: boolean): boolean => {
+    if (marketData && marketData.ticker === ticker) {
       return marketData.changePercent >= 0;
     }
     return fallbackBool;
