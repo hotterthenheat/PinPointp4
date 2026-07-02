@@ -2,17 +2,14 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useMarketData } from '../context/MarketDataContext';
-import Simulator from '../core/simulator';
 import PageHeader from '../components/ui/PageHeader';
-import SegmentedControl from '../components/ui/SegmentedControl';
+import TickerSearch from '../components/ui/TickerSearch';
 import MetricGrid from '../components/ui/MetricGrid';
 import StatCard from '../components/ui/StatCard';
 import SignalBadge from '../components/ui/SignalBadge';
 import Panel from '../components/ui/Panel';
 import AlertRow from '../components/ui/AlertRow';
 import type { Tone } from '../components/ui/tones';
-
-const TICKER_OPTIONS = Object.keys(Simulator.TICKERS).map(tk => ({ value: tk, label: tk }));
 
 interface DerivedAlert {
   id: string;
@@ -91,7 +88,7 @@ const CommandCenter = () => {
       title="Command Center"
       subtitle="Market regime, dealer exposure & active signal state"
       actions={
-        <SegmentedControl ariaLabel="Ticker" options={TICKER_OPTIONS} value={activeTicker} onChange={changeTicker} />
+        <TickerSearch value={activeTicker} onChange={changeTicker} />
       }
     />
   );

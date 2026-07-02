@@ -1,13 +1,10 @@
 import { useMemo } from 'react';
 import { useMarketData } from '../context/MarketDataContext';
-import Simulator from '../core/simulator';
 import PageHeader from '../components/ui/PageHeader';
-import SegmentedControl from '../components/ui/SegmentedControl';
+import TickerSearch from '../components/ui/TickerSearch';
 import Panel from '../components/ui/Panel';
 import DataTable, { type Column } from '../components/ui/DataTable';
 import type { StrikeNode } from '../types/market';
-
-const TICKER_OPTIONS = Object.keys(Simulator.TICKERS).map(tk => ({ value: tk, label: tk }));
 
 interface WallRow {
   strike: number;
@@ -80,7 +77,7 @@ const LiquidityStructure = () => {
         title="Market Structure"
         subtitle="Liquidity walls, gravity zones & dealer hedging pressure"
         actions={
-          <SegmentedControl ariaLabel="Ticker" options={TICKER_OPTIONS} value={activeTicker} onChange={changeTicker} />
+          <TickerSearch value={activeTicker} onChange={changeTicker} />
         }
       />
 

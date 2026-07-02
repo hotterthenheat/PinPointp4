@@ -80,16 +80,14 @@ export const MarketDataProvider = ({ children }: { children: React.ReactNode }) 
   };
 
   const changeTicker = (ticker: string) => {
-    if (ticker in Simulator.TICKERS) {
-      Simulator.setActiveTicker(ticker);
-      setActiveTickerState(ticker as TickerSymbol);
+    const sym = Simulator.setActiveTicker(ticker);
+    setActiveTickerState(sym);
 
-      // Trigger instant tick for snappy UI transition
-      Simulator.tick((data) => {
-        setMarketData(data);
-        updateAuditorState();
-      });
-    }
+    // Trigger instant tick for snappy UI transition
+    Simulator.tick((data) => {
+      setMarketData(data);
+      updateAuditorState();
+    });
   };
 
   const executeTrade = (): ExecuteResult => {

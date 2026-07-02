@@ -5,13 +5,13 @@ import { buildSkyVision, makeSetup } from '../data/skyvision';
 import { SCANNERS, type ScannerKey } from '../types/skyvision';
 import PageHeader from '../components/ui/PageHeader';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import TickerSearch from '../components/ui/TickerSearch';
 import Panel from '../components/ui/Panel';
 import SetupsFeed from '../components/skyvision/SetupsFeed';
 import ContractChain, { type ChainSelection } from '../components/skyvision/ContractChain';
 import SignalMonitor from '../components/skyvision/SignalMonitor';
 import ImpactLeaderboard from '../components/skyvision/ImpactLeaderboard';
 
-const TICKER_OPTIONS = Object.keys(Simulator.TICKERS).map(tk => ({ value: tk, label: tk }));
 const SCANNER_OPTIONS = SCANNERS.map(s => ({ value: s.key, label: s.label }));
 
 interface MonitorTarget {
@@ -31,8 +31,8 @@ const SkysVision = () => {
   // Rebuild the monitored setup live each tick from its identity so it stays current
   const monitoredSetup = useMemo(() => {
     if (!monitorTarget) return null;
-    const cfg = Simulator.TICKERS[monitorTarget.ticker as keyof typeof Simulator.TICKERS];
-    if (!cfg) return null;
+    Simulator.ensureTicker(monitorTarget.ticker);
+    const cfg = Simulator.TICKERS[monitorTarget.ticker];
     return makeSetup(monitorTarget.ticker, cfg.currentPrice, monitorTarget.strike, monitorTarget.right, scanner, cfg.iv);
   }, [monitorTarget, scanner]);
 
@@ -53,9 +53,7 @@ const SkysVision = () => {
       breadcrumb={['Terminal', "Sky's Vision"]}
       title="Trade Cockpit"
       subtitle="Advisory signal engine — the terminal calls ENTER or EXIT; you never place the order"
-      actions={
-        <SegmentedControl ariaLabel="Ticker" options={TICKER_OPTIONS} value={activeTicker} onChange={changeTicker} />
-      }
+      actions={<TickerSearch value={activeTicker} onChange={changeTicker} />}
     />
   );
 
@@ -85,18 +83,20 @@ const SkysVision = () => {
       {/* Feed / monitor + contract chain */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
         <div className="xl:col-span-7 min-w-0">
-          {monitoredSetup ? (
-            <SignalMonitor setup={monitoredSetup} onBack={() => setMonitorTarget(null)} />
-          ) : (
-            <SetupsFeed
-              groups={data.groups}
-              shown={data.shown}
-              total={30}
-              onOpenAnalysis={setup =>
-                setMonitorTarget({ ticker: setup.ticker, strike: setup.strike, right: setup.right })
-              }
-            />
-          )}
+          <div key={monitoredSetup ? `mon-${monitoredSetup.id}` : `feed-${scanner}`} className="animate-view-in">
+            {monitoredSetup ? (
+              <SignalMonitor setup={monitoredSetup} onBack={() => setMonitorTarget(null)} />
+            ) : (
+              <SetupsFeed
+                groups={data.groups}
+                shown={data.shown}
+                total={30}
+                onOpenAnalysis={setup =>
+                  setMonitorTarget({ ticker: setup.ticker, strike: setup.strike, right: setup.right })
+                }
+              />
+            )}
+          </div>
         </div>
 
         <div className="xl:col-span-5 min-w-0">

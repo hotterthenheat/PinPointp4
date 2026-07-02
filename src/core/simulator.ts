@@ -69,29 +69,58 @@ const Simulator = (() => {
     };
   }
 
-  // Configured Tick States
-  const TICKERS: Record<TickerSymbol, TickerConfig> = {
+  // Configured Tick States — core tickers with hand-set params
+  const TICKERS: Record<string, TickerConfig> = {
     SPY: { basePrice: 500, currentPrice: 500, iv: 0.15, step: 1 },
     QQQ: { basePrice: 440, currentPrice: 440, iv: 0.18, step: 1 },
     AAPL: { basePrice: 190, currentPrice: 190, iv: 0.20, step: 0.5 },
     NVDA: { basePrice: 120, currentPrice: 120, iv: 0.35, step: 0.5 }
   };
 
-  const TICKER_KEYS = Object.keys(TICKERS) as TickerSymbol[];
+  /** Core watchlist that always populates the opportunity feed. */
+  const WATCHLIST = ['SPY', 'QQQ', 'AAPL', 'NVDA'];
 
-  let activeTicker: TickerSymbol = 'SPY';
-  const priceHistory: Record<TickerSymbol, number[]> = { SPY: [], QQQ: [], AAPL: [], NVDA: [] };
+  let activeTicker = 'SPY';
+  const priceHistory: Record<string, number[]> = {};
   const historyLimit = 100;
 
-  // Initialize historical price buffer with realistic values
-  TICKER_KEYS.forEach(ticker => {
-    let p = TICKERS[ticker].basePrice;
-    for (let i = 0; i < historyLimit; i++) {
-      p += (Math.random() - 0.5) * TICKERS[ticker].step * 0.5;
-      priceHistory[ticker].push(p);
+  function symbolHash(sym: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < sym.length; i++) {
+      h ^= sym.charCodeAt(i);
+      h = Math.imul(h, 16777619);
     }
-    TICKERS[ticker].currentPrice = p;
-  });
+    return h >>> 0;
+  }
+
+  // Seed a historical price buffer with realistic values
+  function seedHistory(sym: string): void {
+    const cfg = TICKERS[sym];
+    let p = cfg.basePrice;
+    priceHistory[sym] = [];
+    for (let i = 0; i < historyLimit; i++) {
+      p += (Math.random() - 0.5) * cfg.step * 0.5;
+      priceHistory[sym].push(p);
+    }
+    cfg.currentPrice = Number(p.toFixed(2));
+  }
+
+  /** Register a config for any symbol on demand (synthesized for non-core tickers). */
+  function ensureTicker(symbolRaw: string): string {
+    const sym = symbolRaw.toUpperCase();
+    if (!TICKERS[sym]) {
+      const h = symbolHash(sym);
+      const basePrice = Number((15 + (h % 58500) / 100).toFixed(2)); // ~15..600
+      const iv = 0.15 + ((h >>> 5) % 45) / 100; // ~0.15..0.60
+      const step = basePrice >= 100 ? 1 : 0.5;
+      TICKERS[sym] = { basePrice, currentPrice: basePrice, iv, step };
+    }
+    if (!priceHistory[sym]) seedHistory(sym);
+    return sym;
+  }
+
+  // Seed the core watchlist
+  WATCHLIST.forEach(seedHistory);
 
   // Calculate Indicators
   function getIndicators(prices: number[]): Indicators {
@@ -284,7 +313,7 @@ const Simulator = (() => {
 
   // Simulate one tick
   function tick(callback?: (data: MarketSnapshot) => void): void {
-    TICKER_KEYS.forEach(ticker => {
+    Object.keys(TICKERS).forEach(ticker => {
       const config = TICKERS[ticker];
       const history = priceHistory[ticker];
 
@@ -344,14 +373,15 @@ const Simulator = (() => {
     }
   }
 
-  function isTickerSymbol(t: string): t is TickerSymbol {
-    return t in TICKERS;
-  }
-
   return {
     TICKERS,
-    setActiveTicker: (t: string): void => { if (isTickerSymbol(t)) activeTicker = t; },
-    getActiveTicker: (): TickerSymbol => activeTicker,
+    WATCHLIST,
+    ensureTicker,
+    setActiveTicker: (t: string): string => {
+      activeTicker = ensureTicker(t);
+      return activeTicker;
+    },
+    getActiveTicker: (): string => activeTicker,
     tick,
     getGreeks: calculateGreeks
   };

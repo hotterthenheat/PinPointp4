@@ -1,14 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useMarketData } from '../context/MarketDataContext';
 import Charts from '../core/charts';
-import Simulator from '../core/simulator';
 import PageHeader from '../components/ui/PageHeader';
-import SegmentedControl from '../components/ui/SegmentedControl';
+import TickerSearch from '../components/ui/TickerSearch';
 import Panel from '../components/ui/Panel';
 import StatCard from '../components/ui/StatCard';
 import MetricGrid from '../components/ui/MetricGrid';
-
-const TICKER_OPTIONS = Object.keys(Simulator.TICKERS).map(tk => ({ value: tk, label: tk }));
 
 const PinpointGex = () => {
   const { activeTicker, marketData, changeTicker } = useMarketData();
@@ -35,7 +32,7 @@ const PinpointGex = () => {
         title="Strike Exposure Profile"
         subtitle="Strike-by-strike dealer gamma, delta & vega exposure"
         actions={
-          <SegmentedControl ariaLabel="Ticker" options={TICKER_OPTIONS} value={activeTicker} onChange={changeTicker} />
+          <TickerSearch value={activeTicker} onChange={changeTicker} />
         }
       />
 

@@ -298,10 +298,12 @@ function buildImpact(snapshot: MarketSnapshot): ImpactRow[] {
 
 // ---- top-level assembly ---------------------------------------------------
 export function buildSkyVision(snapshot: MarketSnapshot, scanner: ScannerKey): SkyVisionData {
-  const tickers = Object.keys(Simulator.TICKERS) as (keyof typeof Simulator.TICKERS)[];
+  // Curated watchlist plus whatever ticker is currently active
+  const feedTickers = Array.from(new Set([snapshot.ticker, ...Simulator.WATCHLIST]));
 
   const groups: SetupGroup[] = [];
-  for (const t of tickers) {
+  for (const t of feedTickers) {
+    Simulator.ensureTicker(t);
     const cfg = Simulator.TICKERS[t];
     const group = buildGroup(t, cfg.currentPrice, cfg.iv, cfg.step, scanner);
     if (group) groups.push(group);

@@ -5,7 +5,8 @@
 ==================================================
 */
 
-export type TickerSymbol = 'SPY' | 'QQQ' | 'AAPL' | 'NVDA';
+/** Any listed symbol. Core sim tickers are seeded; others are synthesized on demand. */
+export type TickerSymbol = string;
 
 export interface TickerConfig {
   basePrice: number;
