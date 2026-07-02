@@ -34,3 +34,7 @@ build/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Scratch / screenshot scripts
+_shot.mjs
+_scratch*

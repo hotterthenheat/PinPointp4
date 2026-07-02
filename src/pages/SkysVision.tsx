@@ -1,127 +1,65 @@
 import { useMemo, useState } from 'react';
 import { useMarketData } from '../context/MarketDataContext';
-import { buildVisionModel } from '../data/vision';
 import Simulator from '../core/simulator';
+import { buildSkyVision, makeSetup } from '../data/skyvision';
+import { SCANNERS, type ScannerKey } from '../types/skyvision';
 import PageHeader from '../components/ui/PageHeader';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import MetricGrid from '../components/ui/MetricGrid';
-import StatCard from '../components/ui/StatCard';
-import SignalBadge from '../components/ui/SignalBadge';
 import Panel from '../components/ui/Panel';
-import DataTable, { type Column } from '../components/ui/DataTable';
-import PriceChart from '../components/charts/PriceChart';
-import TradePlanCard from '../components/trade/TradePlanCard';
-import ReasoningPanel from '../components/trade/ReasoningPanel';
-import type { ContractRow, ExpiryKey } from '../types/vision';
-
-const EXPIRY_OPTIONS = [
-  { value: '0DTE', label: '0DTE' },
-  { value: '1DTE', label: '1DTE' },
-  { value: '1W', label: '1W' },
-  { value: '1M', label: '1M' },
-] as const;
+import SetupsFeed from '../components/skyvision/SetupsFeed';
+import ContractChain, { type ChainSelection } from '../components/skyvision/ContractChain';
+import SignalMonitor from '../components/skyvision/SignalMonitor';
+import ImpactLeaderboard from '../components/skyvision/ImpactLeaderboard';
 
 const TICKER_OPTIONS = Object.keys(Simulator.TICKERS).map(tk => ({ value: tk, label: tk }));
+const SCANNER_OPTIONS = SCANNERS.map(s => ({ value: s.key, label: s.label }));
 
-const gradeTone = (grade: string) =>
-  grade.startsWith('A') ? 'bull' : grade === 'D' ? 'bear' : grade.startsWith('B') ? 'neutral' : 'warn';
-
-const CONTRACT_COLUMNS: Column<ContractRow>[] = [
-  {
-    key: 'contract',
-    header: 'Contract',
-    render: row => (
-      <span className="font-semibold text-textPrimary">
-        {row.contract}
-        <span className={`ml-1.5 text-[10px] ${row.right === 'C' ? 'text-bull' : 'text-bear'}`}>
-          {row.right === 'C' ? 'CALL' : 'PUT'}
-        </span>
-      </span>
-    ),
-    sortValue: row => row.strike,
-  },
-  { key: 'dte', header: 'DTE', render: row => <span className="text-textSecondary">{row.dte}</span> },
-  {
-    key: 'velocity',
-    header: 'Vol Vel',
-    align: 'right',
-    sortValue: row => row.volumeVelocity,
-    render: row => (
-      <span className={row.volumeVelocity >= 1.5 ? 'text-warn' : 'text-textSecondary'}>
-        {row.volumeVelocity.toFixed(1)}x
-      </span>
-    ),
-  },
-  {
-    key: 'flow',
-    header: 'Flow',
-    align: 'right',
-    sortValue: row => row.flowScore,
-    render: row => <span className="text-textSecondary">{row.flowScore}</span>,
-  },
-  {
-    key: 'grade',
-    header: 'Grade',
-    align: 'right',
-    sortValue: row => row.score,
-    render: row => <SignalBadge tone={gradeTone(row.grade)}>{row.grade}</SignalBadge>,
-  },
-  {
-    key: 'score',
-    header: 'Score',
-    align: 'right',
-    sortValue: row => row.score,
-    render: row => <span className="font-semibold text-textPrimary">{row.score}</span>,
-  },
-];
+interface MonitorTarget {
+  ticker: string;
+  strike: number;
+  right: 'C' | 'P';
+}
 
 const SkysVision = () => {
-  const { activeTicker, marketData, changeTicker, executeTrade } = useMarketData();
-  const [expiry, setExpiry] = useState<ExpiryKey>('0DTE');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { activeTicker, marketData, changeTicker } = useMarketData();
+  const [scanner, setScanner] = useState<ScannerKey>('top-opportunity');
+  const [monitorTarget, setMonitorTarget] = useState<MonitorTarget | null>(null);
+  const [chainSel, setChainSel] = useState<ChainSelection | null>(null);
 
-  const model = useMemo(
-    () => (marketData ? buildVisionModel(marketData, expiry) : null),
-    [marketData, expiry]
-  );
+  const data = useMemo(() => (marketData ? buildSkyVision(marketData, scanner) : null), [marketData, scanner]);
 
-  const selectedContract =
-    model?.contracts.find(c => c.id === selectedId) ?? model?.contracts[0] ?? null;
+  // Rebuild the monitored setup live each tick from its identity so it stays current
+  const monitoredSetup = useMemo(() => {
+    if (!monitorTarget) return null;
+    const cfg = Simulator.TICKERS[monitorTarget.ticker as keyof typeof Simulator.TICKERS];
+    if (!cfg) return null;
+    return makeSetup(monitorTarget.ticker, cfg.currentPrice, monitorTarget.strike, monitorTarget.right, scanner, cfg.iv);
+  }, [monitorTarget, scanner]);
 
-  const handleExecute = () => {
-    const res = executeTrade();
-    if (res.success && res.trade) {
-      alert(`Hedge executed. Transaction ID: ${res.trade.id}`);
-    } else {
-      alert(res.message ?? 'Trade execution failed');
-    }
+  const activeScanner = SCANNERS.find(s => s.key === scanner)!;
+
+  const handleScanner = (next: ScannerKey) => {
+    setScanner(next);
+    setMonitorTarget(null); // detail depends on scanner; return to feed
+  };
+
+  const handleChainSelect = (sel: ChainSelection) => {
+    setChainSel(sel);
+    setMonitorTarget({ ticker: sel.ticker, strike: sel.strike, right: sel.right });
   };
 
   const header = (
     <PageHeader
       breadcrumb={['Terminal', "Sky's Vision"]}
       title="Trade Cockpit"
-      subtitle="Multi-factor contract grading with dealer-flow confirmation"
+      subtitle="Advisory signal engine — the terminal calls ENTER or EXIT; you never place the order"
       actions={
-        <>
-          <SegmentedControl
-            ariaLabel="Ticker"
-            options={TICKER_OPTIONS}
-            value={activeTicker}
-            onChange={changeTicker}
-          />
-          <SegmentedControl
-            ariaLabel="Expiry"
-            options={EXPIRY_OPTIONS}
-            value={expiry}
-            onChange={setExpiry}
-          />
-        </>
+        <SegmentedControl ariaLabel="Ticker" options={TICKER_OPTIONS} value={activeTicker} onChange={changeTicker} />
       }
     />
   );
 
-  if (!model) {
+  if (!data || !marketData) {
     return (
       <>
         {header}
@@ -134,101 +72,40 @@ const SkysVision = () => {
     );
   }
 
-  const { assessment, factors, contracts, plan, summary } = model;
-  const bullish = assessment.direction === 'BULLISH';
-
   return (
     <>
       {header}
 
-      {/* Band 1 — verdict strip */}
-      <MetricGrid min="160px">
-        <StatCard
-          label="Direction"
-          value={
-            <SignalBadge tone={bullish ? 'bull' : 'bear'} dot className="text-xs">
-              {assessment.direction}
-            </SignalBadge>
-          }
-          sub={`composite ${assessment.score}/100`}
-        />
-        <StatCard
-          label="Confidence"
-          value={`${assessment.confidence}%`}
-          tone={assessment.confidence >= 70 ? 'bull' : 'neutral'}
-          sub="model calibration"
-        />
-        <StatCard label="Setup Grade" value={assessment.grade} tone={gradeTone(assessment.grade)} sub="A+ through D scale" />
-        <StatCard
-          label="Trend Regime"
-          value={`${assessment.trendScore}`}
-          tone={assessment.trendScore >= 60 ? 'bull' : assessment.trendScore <= 40 ? 'bear' : 'neutral'}
-          sub="EMA + RSI composite"
-        />
-        <StatCard
-          label="Volume Velocity"
-          value={`${assessment.volumeVelocity.toFixed(1)}x`}
-          tone={assessment.volumeVelocity >= 1.5 ? 'warn' : 'neutral'}
-          sub="vs baseline prints"
-        />
-        <StatCard
-          label="Dealer Flow"
-          value={
-            <SignalBadge
-              tone={assessment.dealerFlow === 'SUPPORTIVE' ? 'bull' : assessment.dealerFlow === 'OPPOSED' ? 'bear' : 'neutral'}
-              className="text-xs"
-            >
-              {assessment.dealerFlow}
-            </SignalBadge>
-          }
-          sub="net gamma inventory"
-        />
-      </MetricGrid>
-
-      {/* Band 2 — scanner + chart */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
-        <Panel
-          title="Contract Scanner"
-          subtitle={`${contracts.length} contracts`}
-          flush
-          className="xl:col-span-5"
-          bodyClassName="flex flex-col"
-        >
-          <DataTable
-            columns={CONTRACT_COLUMNS}
-            rows={contracts}
-            rowKey={row => row.id}
-            selectedKey={selectedContract?.id ?? null}
-            onRowClick={row => setSelectedId(row.id)}
-            initialSort={{ key: 'score', dir: 'desc' }}
-            maxHeight="424px"
-          />
-        </Panel>
-
-        <Panel
-          title="Price Structure"
-          subtitle={`${plan.ticker} · spot $${marketData!.spot.toFixed(2)}`}
-          className="xl:col-span-7"
-          bodyClassName="flex flex-col"
-        >
-          <PriceChart history={marketData!.priceHistory} plan={plan} height={360} />
-        </Panel>
+      {/* Scanner tabs */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <SegmentedControl ariaLabel="Scanner" options={SCANNER_OPTIONS} value={scanner} onChange={handleScanner} />
+        <span className="font-mono text-[10px] text-textMuted uppercase tracking-wider">{activeScanner.blurb}</span>
       </div>
 
-      {/* Band 3 — plan + reasoning */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
-        <div className="xl:col-span-4 flex">
-          <TradePlanCard
-            plan={plan}
-            assessment={assessment}
-            selectedContract={selectedContract}
-            onExecute={handleExecute}
-          />
+      {/* Feed / monitor + contract chain */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+        <div className="xl:col-span-7 min-w-0">
+          {monitoredSetup ? (
+            <SignalMonitor setup={monitoredSetup} onBack={() => setMonitorTarget(null)} />
+          ) : (
+            <SetupsFeed
+              groups={data.groups}
+              shown={data.shown}
+              total={30}
+              onOpenAnalysis={setup =>
+                setMonitorTarget({ ticker: setup.ticker, strike: setup.strike, right: setup.right })
+              }
+            />
+          )}
         </div>
-        <div className="xl:col-span-8 flex">
-          <ReasoningPanel factors={factors} summary={summary} />
+
+        <div className="xl:col-span-5 min-w-0">
+          <ContractChain data={data.chain} selected={chainSel} onSelect={handleChainSelect} />
         </div>
       </div>
+
+      {/* Largest impact leaderboard */}
+      <ImpactLeaderboard rows={data.impact} />
     </>
   );
 };

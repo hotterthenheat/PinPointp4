@@ -1,0 +1,137 @@
+import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import Panel from '../ui/Panel';
+import SignalBadge from '../ui/SignalBadge';
+import VerdictBadge from './VerdictBadge';
+import GreeksRow from './GreeksRow';
+import type { Setup, TakeProfit } from '../../types/skyvision';
+
+interface SignalMonitorProps {
+  setup: Setup;
+  onBack: () => void;
+}
+
+const tpStatusTone = {
+  'IN PROGRESS': 'bull',
+  PENDING: 'warn',
+  HIT: 'bull',
+} as const;
+
+const TakeProfitCard = ({ tp }: { tp: TakeProfit }) => (
+  <div className="border border-borderSubtle bg-inset rounded-md px-3 py-2.5 flex flex-col gap-1">
+    <div className="flex items-center justify-between">
+      <span className="font-mono text-[9px] uppercase tracking-widest text-textMuted">Take Profit {tp.level}</span>
+      <span className="font-mono text-[9px] uppercase tracking-wider text-textMuted">Expected</span>
+    </div>
+    <div className="flex items-end justify-between">
+      <SignalBadge tone={tpStatusTone[tp.status]}>{tp.status}</SignalBadge>
+      <span className="font-mono text-lg font-semibold text-bull tnum leading-none">+{tp.expectedPct}%</span>
+    </div>
+    <div className="font-mono text-[10px] text-textSecondary tnum">Target ${tp.target.toFixed(2)}</div>
+  </div>
+);
+
+const SignalMonitor = ({ setup, onBack }: SignalMonitorProps) => {
+  const [greekSource, setGreekSource] = useState<'MODEL' | 'CHAIN'>('MODEL');
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Header bar */}
+      <Panel className="w-full">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 border border-borderSubtle hover:border-borderMuted rounded-md px-2.5 py-1.5 font-mono text-[11px] text-textSecondary hover:text-textPrimary transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Scanner
+          </button>
+          <VerdictBadge verdict={setup.verdict} dot />
+          <span className="font-mono text-sm font-bold text-textPrimary">{setup.contract}</span>
+          <div className="ml-auto text-right border border-borderSubtle bg-inset rounded-md px-3 py-1.5">
+            <div className="font-mono text-[9px] uppercase tracking-widest text-textMuted">Live Mid</div>
+            <div className="font-mono text-sm font-semibold text-textPrimary tnum">${setup.liveMid.toFixed(2)}</div>
+          </div>
+        </div>
+      </Panel>
+
+      {/* Setup + confidence/greeks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <Panel title="The Setup" className="w-full">
+          <div className="flex flex-col gap-3 h-full">
+            <h3 className="text-base font-semibold text-select leading-snug">{setup.headline}</h3>
+            <p className="text-[11px] text-textSecondary leading-relaxed">{setup.whyText}</p>
+            <div className="mt-auto pt-2 border-t border-borderSubtle">
+              <div className="font-mono text-[9px] uppercase tracking-widest text-textMuted mb-2">Why</div>
+              <div className="flex flex-wrap gap-1.5">
+                {setup.whyChips.map(chip => (
+                  <SignalBadge key={chip} tone="neutral">
+                    {chip}
+                  </SignalBadge>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel
+          title="Live Read"
+          actions={
+            <div className="inline-flex border border-borderSubtle rounded overflow-hidden">
+              {(['MODEL', 'CHAIN'] as const).map(src => (
+                <button
+                  key={src}
+                  onClick={() => setGreekSource(src)}
+                  className={`px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider transition-colors ${
+                    greekSource === src ? 'bg-select/[0.08] text-select' : 'text-textMuted hover:text-textSecondary'
+                  }`}
+                >
+                  {src}
+                </button>
+              ))}
+            </div>
+          }
+          className="w-full"
+        >
+          <div className="flex flex-col gap-4 h-full">
+            {/* Confidence meter */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-textMuted flex items-center gap-1.5">
+                  Confidence <SignalBadge tone="bull" dot pulse>Live</SignalBadge>
+                </span>
+                <span className="font-mono text-xs font-semibold text-textPrimary tnum">{setup.confidence}%</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <span
+                  className="block h-full rounded-full bg-bull/80"
+                  style={{ width: `${setup.confidence}%` }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="font-mono text-[9px] uppercase tracking-widest text-textMuted mb-2">Greeks</div>
+              <GreeksRow greeks={setup.greeks} fourth="vega" />
+            </div>
+
+            <div className="mt-auto flex items-center justify-between border-t border-borderSubtle pt-3">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-textMuted flex items-center gap-1.5">
+                Expected Move <SignalBadge tone="bull" dot pulse>Live</SignalBadge>
+              </span>
+              <span className="font-mono text-sm font-semibold text-select tnum">+{setup.expectedMovePct}%</span>
+            </div>
+          </div>
+        </Panel>
+      </div>
+
+      {/* Take-profit ladder */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {setup.takeProfits.map(tp => (
+          <TakeProfitCard key={tp.level} tp={tp} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default SignalMonitor;
