@@ -105,13 +105,13 @@ function healthFor(spot: number, strike: number, right: OptionRight): number {
 }
 
 function momentumFromHealth(health: number): Momentum {
-  if (health >= 62) return 'STRENGTHENING';
+  if (health >= 56) return 'STRENGTHENING';
   if (health >= 45) return 'NEUTRAL';
   return 'WEAKENING';
 }
 
 function actionFromHealth(health: number): ChainAction {
-  if (health >= 66) return 'HOLD';
+  if (health >= 56) return 'HOLD';
   if (health >= 45) return 'REDUCE';
   return 'SELL';
 }
@@ -154,12 +154,20 @@ export function makeSetup(
 
   const health = clamp(healthFor(spot, strike, right) + Math.round((rng() - 0.5) * 12), 5, 99);
   const momentum = momentumFromHealth(health);
-  const score = Math.round(clamp(profile.scoreFloor + rng() * 9, 60, 99));
+
+  // Opportunity score: near-the-money + aligned with the ticker's lean scores highest;
+  // far-OTM or opposed contracts score low, so verdict spans ENTER / WATCH / EXIT.
+  const bullish = tickerLean(ticker, scanner);
+  const aligned = bullish ? right === 'C' : right === 'P';
+  const proximity = 1 - Math.min(1, Math.abs(strike - spot) / (spot * 0.03));
+  const score = Math.round(
+    clamp(96 * (0.4 + 0.6 * proximity) * (aligned ? 1 : 0.55) + (rng() - 0.5) * 8, 8, 99)
+  );
   const expectedMovePct = Number((profile.moveBias * (24 + rng() * 22)).toFixed(1));
 
   const greeks = Simulator.getGreeks(spot, strike, 0.01, iv);
   const delta = right === 'C' ? greeks.deltaCall : greeks.deltaPut;
-  const verdict: Verdict = score >= 90 ? 'ENTER' : score >= 80 ? 'WATCH' : 'EXIT';
+  const verdict: Verdict = score >= 88 ? 'ENTER' : score >= 72 ? 'WATCH' : 'EXIT';
 
   const why = WHY_LIBRARY[scanner];
   const headline =
@@ -217,9 +225,13 @@ function buildSparkline(ticker: string, spot: number): number[] {
   return out;
 }
 
+/** Deterministic directional lean per ticker+scanner. Shared by feed and monitor. */
+function tickerLean(ticker: string, scanner: ScannerKey): boolean {
+  return mulberry(hash(`${ticker}-${scanner}-group`))() > 0.42;
+}
+
 function buildGroup(ticker: string, spot: number, iv: number, step: number, scanner: ScannerKey): SetupGroup | null {
-  const rng = mulberry(hash(`${ticker}-${scanner}-group`));
-  const bullish = rng() > 0.42;
+  const bullish = tickerLean(ticker, scanner);
   const candidates: Setup[] = [];
 
   // Sample a handful of near-the-money strikes on the favored side

@@ -21,12 +21,12 @@ const momentumTone: Record<Momentum, Tone> = {
 };
 
 const actionStyle: Record<ChainAction, string> = {
-  HOLD: 'border-borderMuted text-textSecondary',
-  REDUCE: 'border-warn/30 text-warn bg-warn/5',
-  SELL: 'border-bear/30 text-bear bg-bear/5',
+  HOLD: 'border-warn/30 text-warn bg-warn/5',
+  REDUCE: 'border-bear/30 text-bear bg-bear/5',
+  SELL: 'border-bear/50 text-bear bg-bear/10 font-bold',
 };
 
-const healthTone = (h: number): Tone => (h >= 62 ? 'bull' : h >= 45 ? 'neutral' : 'bear');
+const healthTone = (h: number): Tone => (h >= 56 ? 'bull' : h >= 45 ? 'neutral' : 'bear');
 
 interface CellProps {
   side: ChainSide;

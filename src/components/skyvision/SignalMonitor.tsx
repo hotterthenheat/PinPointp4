@@ -2,9 +2,16 @@ import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import Panel from '../ui/Panel';
 import SignalBadge from '../ui/SignalBadge';
+import { toneText, type Tone } from '../ui/tones';
 import VerdictBadge from './VerdictBadge';
 import GreeksRow from './GreeksRow';
-import type { Setup, TakeProfit } from '../../types/skyvision';
+import type { Setup, TakeProfit, Verdict } from '../../types/skyvision';
+
+const verdictTone: Record<Verdict, Tone> = {
+  ENTER: 'bull',
+  EXIT: 'bear',
+  WATCH: 'warn',
+};
 
 interface SignalMonitorProps {
   setup: Setup;
@@ -33,6 +40,7 @@ const TakeProfitCard = ({ tp }: { tp: TakeProfit }) => (
 
 const SignalMonitor = ({ setup, onBack }: SignalMonitorProps) => {
   const [greekSource, setGreekSource] = useState<'MODEL' | 'CHAIN'>('MODEL');
+  const tone = verdictTone[setup.verdict];
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,9 +64,9 @@ const SignalMonitor = ({ setup, onBack }: SignalMonitorProps) => {
 
       {/* Setup + confidence/greeks */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <Panel title="The Setup" className="w-full">
+        <Panel title="The Setup" tone={tone} className="w-full">
           <div className="flex flex-col gap-3 h-full">
-            <h3 className="text-base font-semibold text-select leading-snug">{setup.headline}</h3>
+            <h3 className={`text-base font-semibold leading-snug ${toneText[tone]}`}>{setup.headline}</h3>
             <p className="text-[11px] text-textSecondary leading-relaxed">{setup.whyText}</p>
             <div className="mt-auto pt-2 border-t border-borderSubtle">
               <div className="font-mono text-[9px] uppercase tracking-widest text-textMuted mb-2">Why</div>
