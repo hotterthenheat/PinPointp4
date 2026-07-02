@@ -16,8 +16,6 @@ interface MarketDataContextValue {
   changeTicker: (ticker: string) => void;
   executeTrade: () => ExecuteResult;
   clearLedger: () => void;
-  isConsoleLaunched: boolean;
-  setIsConsoleLaunched: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const MarketDataContext = createContext<MarketDataContextValue | null>(null);
@@ -30,8 +28,6 @@ export const MarketDataProvider = ({ children }: { children: React.ReactNode }) 
     closedTrades: [],
     stats: { winRate: 0, profitFactor: 0, avgAccuracy: 0, totalPnL: 0, count: 0 }
   });
-
-  const [isConsoleLaunched, setIsConsoleLaunched] = useState(false);
 
   const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -115,9 +111,7 @@ export const MarketDataProvider = ({ children }: { children: React.ReactNode }) 
       auditorState,
       changeTicker,
       executeTrade,
-      clearLedger,
-      isConsoleLaunched,
-      setIsConsoleLaunched
+      clearLedger
     }}>
       {children}
     </MarketDataContext.Provider>

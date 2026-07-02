@@ -8,22 +8,36 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: '#000000',
+        // Surfaces
+        canvas: '#050505',
         panel: '#0a0a0a',
-        panelHover: '#121212',
+        panelHover: '#101010',
+        inset: '#070707',
         inputBg: '#050505',
-        borderSubtle: '#1f1f1f',
-        borderMuted: '#2e2e2e',
-        borderFocus: '#ffffff',
-        primary: '#ffffff',
-        secondary: '#888888',
+
+        // Borders
+        borderSubtle: '#1c1c1c',
+        borderMuted: '#2a2a2a',
+        borderFocus: '#ededed',
+
+        // Text
+        textPrimary: '#ededed',
+        textSecondary: '#8f8f8f',
+        textMuted: '#4d4d4d',
+
+        // Directional / status accents (always paired with a label or icon)
+        bull: '#10b981',
+        bear: '#f43f5e',
+        warn: '#f59e0b',
+        select: '#38bdf8',
+
+        // Legacy aliases (pre-redesign pages)
+        primary: '#ededed',
+        secondary: '#8f8f8f',
         silver: '#a1a1aa',
         gammaPos: '#10b981',
         gammaNeg: '#f43f5e',
         warning: '#f59e0b',
-        textPrimary: '#ffffff',
-        textSecondary: '#888888',
-        textMuted: '#444444',
       },
       fontSize: {
         'xxs': '0.7rem',

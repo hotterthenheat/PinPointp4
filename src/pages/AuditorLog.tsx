@@ -1,160 +1,168 @@
-import React from 'react';
+import { Trash2 } from 'lucide-react';
 import { useMarketData } from '../context/MarketDataContext';
-import { TrendingUp, BarChart2, Activity, Trash2 } from 'lucide-react';
+import PageHeader from '../components/ui/PageHeader';
+import MetricGrid from '../components/ui/MetricGrid';
+import StatCard from '../components/ui/StatCard';
+import Panel from '../components/ui/Panel';
+import SignalBadge from '../components/ui/SignalBadge';
+import DataTable, { type Column } from '../components/ui/DataTable';
+import type { TradeRecord } from '../types/market';
+
+const CLOSED_COLUMNS: Column<TradeRecord>[] = [
+  {
+    key: 'ticker',
+    header: 'Ticker',
+    render: r => <span className="font-semibold text-textPrimary">{r.ticker}</span>,
+  },
+  {
+    key: 'dir',
+    header: 'Dir',
+    render: r => (
+      <span className={r.direction === 'BULLISH' ? 'text-bull' : 'text-bear'}>
+        {r.direction === 'BULLISH' ? 'LONG' : 'SHORT'}
+      </span>
+    ),
+  },
+  {
+    key: 'entry',
+    header: 'Entry',
+    align: 'right',
+    sortValue: r => r.entryPrice,
+    render: r => <span className="text-textSecondary">${r.entryPrice.toFixed(2)}</span>,
+  },
+  {
+    key: 'exit',
+    header: 'Exit',
+    align: 'right',
+    render: r => <span className="text-textSecondary">${r.exitPrice?.toFixed(2) ?? '--'}</span>,
+  },
+  {
+    key: 'acc',
+    header: 'Accuracy',
+    align: 'right',
+    sortValue: r => r.accuracy,
+    render: r => <span className="text-textSecondary">{r.accuracy}%</span>,
+  },
+  {
+    key: 'pnl',
+    header: 'P&L',
+    align: 'right',
+    sortValue: r => r.pnl,
+    render: r => (
+      <span className={r.pnl >= 0 ? 'text-bull' : 'text-bear'}>
+        {r.pnl >= 0 ? '+' : ''}${r.pnl.toFixed(2)}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Result',
+    align: 'right',
+    sortValue: r => r.status,
+    render: r => <SignalBadge tone={r.status === 'WIN' ? 'bull' : r.status === 'LOSS' ? 'bear' : 'neutral'}>{r.status}</SignalBadge>,
+  },
+  {
+    key: 'time',
+    header: 'Closed',
+    align: 'right',
+    render: r => <span className="text-textMuted">{r.time}</span>,
+  },
+];
 
 const AuditorLog = () => {
   const { auditorState, clearLedger } = useMarketData();
   const { activeTrades, closedTrades, stats } = auditorState;
 
-  const handleResetLedger = () => {
-    if (window.confirm("Reset performance ledger and history?")) {
-      clearLedger();
-    }
+  const handleReset = () => {
+    if (window.confirm('Reset performance ledger and history?')) clearLedger();
   };
 
+  const totalPnLTone = stats.totalPnL >= 0 ? 'bull' : 'bear';
+
   return (
-    <div className="flex-grow max-w-7xl w-full mx-auto px-6 py-8 relative z-10 flex flex-col gap-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xxs font-mono text-textSecondary uppercase tracking-widest">
-        <span>Platform</span>
-        <span>/</span>
-        <span className="text-white">Performance Auditor Log</span>
-      </div>
+    <>
+      <PageHeader
+        breadcrumb={['Terminal', 'Auditor Log']}
+        title="Trade History & Auditor"
+        subtitle="Self-auditing prediction ledger & calibration accuracy"
+        actions={
+          <button
+            onClick={handleReset}
+            className="inline-flex items-center gap-1.5 border border-borderSubtle hover:border-borderMuted bg-panel text-textSecondary hover:text-textPrimary rounded-md px-3 py-1.5 font-mono text-xs transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Reset Ledger
+          </button>
+        }
+      />
 
-      {/* Top Metrics Overview (Tremor style) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="border border-borderSubtle bg-panel p-6 rounded-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xxs font-mono text-textSecondary uppercase tracking-wider font-bold">
-            <span>Success Calibration Rate</span>
-            <TrendingUp className="w-3.5 h-3.5 text-gammaPos" />
-          </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="font-mono text-3xl font-extrabold text-white" id="stat-winrate">
-              {stats.count > 0 ? `${stats.winRate}%` : '--'}
-            </span>
-            <span className="text-xxs text-textSecondary font-medium">accuracy zones</span>
-          </div>
-        </div>
-        <div className="border border-borderSubtle bg-panel p-6 rounded-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xxs font-mono text-textSecondary uppercase tracking-wider font-bold">
-            <span>Profit Factor Ratio</span>
-            <BarChart2 className="w-3.5 h-3.5 text-zinc-400" />
-          </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="font-mono text-3xl font-extrabold text-white" id="stat-profitfactor">
-              {stats.count > 0 ? stats.profitFactor.toFixed(2) : '--'}
-            </span>
-            <span className="text-xxs text-textSecondary font-medium">gross gains/losses</span>
-          </div>
-        </div>
-        <div className="border border-borderSubtle bg-panel p-6 rounded-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xxs font-mono text-textSecondary uppercase tracking-wider font-bold">
-            <span>Average Accuracy Alignment</span>
-            <Activity className="w-3.5 h-3.5 text-zinc-400" />
-          </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="font-mono text-3xl font-extrabold text-white" id="stat-avgaccuracy">
-              {stats.count > 0 ? `${stats.avgAccuracy}%` : '--'}
-            </span>
-            <span className="text-xxs text-textSecondary font-medium">spot calibration</span>
-          </div>
-        </div>
-      </div>
+      <MetricGrid min="160px">
+        <StatCard
+          label="Win Rate"
+          value={stats.count > 0 ? `${stats.winRate}%` : '--'}
+          tone={stats.winRate >= 50 ? 'bull' : 'bear'}
+          sub="calibration success"
+        />
+        <StatCard
+          label="Profit Factor"
+          value={stats.count > 0 ? stats.profitFactor.toFixed(2) : '--'}
+          sub="gross gain / loss"
+        />
+        <StatCard
+          label="Avg Accuracy"
+          value={stats.count > 0 ? `${stats.avgAccuracy}%` : '--'}
+          sub="exit vs target"
+        />
+        <StatCard
+          label="Total P&L"
+          value={stats.count > 0 ? `${stats.totalPnL >= 0 ? '+' : ''}$${stats.totalPnL.toFixed(0)}` : '--'}
+          tone={totalPnLTone}
+          sub={`${stats.count} closed`}
+        />
+      </MetricGrid>
 
-      {/* Main Auditor Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-        
-        {/* Left Column: Active exposures */}
-        <div className="lg:col-span-1 border border-borderSubtle bg-panel p-6 rounded-xl flex flex-col gap-4">
-          <h3 className="font-mono text-xs font-bold uppercase tracking-wider border-b border-borderSubtle pb-2.5 flex justify-between items-center text-white">
-            <span>Active Exposures</span>
-            <span className="text-[10px] text-textMuted uppercase font-normal">unexpired</span>
-          </h3>
-          
-          <div className="flex flex-col gap-3 flex-grow overflow-y-auto max-h-[400px]" id="open-positions-list">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+        <Panel title="Active Exposures" subtitle="open positions" flush className="xl:col-span-4 w-full">
+          <div className="max-h-[420px] overflow-y-auto">
             {activeTrades.length === 0 ? (
-              <div className="text-[10px] text-textMuted text-center py-8">
-                No active exposures.
-              </div>
+              <div className="px-4 py-10 text-center font-mono text-[11px] text-textMuted">No active exposures</div>
             ) : (
-              activeTrades.map((trade) => {
-                const pnlClass = trade.pnl >= 0 ? 'text-gammaPos' : 'text-gammaNeg';
-                const dirBadge = trade.direction === 'BULLISH'
-                  ? 'bg-emerald-500/10 text-gammaPos'
-                  : 'bg-rose-500/10 text-gammaNeg';
-
-                return (
-                  <div key={trade.id} className="bg-zinc-950 border border-borderSubtle rounded p-3 flex flex-col gap-1.5 text-xs animate-slide-in">
-                    <div className="flex justify-between font-mono font-semibold">
-                      <span className="text-white">
-                        {trade.ticker} 
-                        <span className={`text-[9px] px-1 py-0.2 rounded uppercase font-bold ml-1.5 ${dirBadge}`}>
-                          {trade.direction}
-                        </span>
-                      </span>
-                      <span className={pnlClass}>${trade.pnl.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-textSecondary text-[10px]">
-                      <span>Ent: ${trade.entryPrice.toFixed(2)} &rarr; Tgt: ${trade.target.toFixed(2)}</span>
-                      <span>SL: ${trade.stopLoss.toFixed(2)}</span>
-                    </div>
+              activeTrades.map(trade => (
+                <div key={trade.id} className="px-4 py-3 border-b border-borderSubtle/60 last:border-0">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-semibold text-textPrimary">{trade.ticker}</span>
+                      <SignalBadge tone={trade.direction === 'BULLISH' ? 'bull' : 'bear'}>
+                        {trade.direction}
+                      </SignalBadge>
+                    </span>
+                    <span className={`font-mono text-xs font-semibold tnum ${trade.pnl >= 0 ? 'text-bull' : 'text-bear'}`}>
+                      {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                    </span>
                   </div>
-                );
-              })
+                  <div className="flex items-center justify-between mt-1.5 font-mono text-[10px] text-textMuted">
+                    <span>
+                      Ent ${trade.entryPrice.toFixed(2)} → Tgt ${trade.target.toFixed(2)}
+                    </span>
+                    <span>SL ${trade.stopLoss.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-        </div>
+        </Panel>
 
-        {/* Right Column: Closed transactions ledger table */}
-        <div className="lg:col-span-2 border border-borderSubtle bg-panel p-6 rounded-xl flex flex-col gap-4">
-          <div className="flex justify-between items-center border-b border-borderSubtle pb-2.5">
-            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-white">Historical Audit Log</h3>
-            <button 
-              onClick={handleResetLedger}
-              className="bg-black hover:bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white text-xxs font-mono font-semibold px-3 py-1.5 rounded transition-all flex items-center gap-1.5 focus:outline-none"
-            >
-              <Trash2 className="w-3 h-3" /> Reset Ledger
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-3 flex-grow overflow-y-auto max-h-[400px] pr-2" id="auditor-ledger-list">
-            {closedTrades.length === 0 ? (
-              <div className="text-[10px] text-textMuted text-center py-16">
-                No logged trials.
-              </div>
-            ) : (
-              closedTrades.map((trade, idx) => {
-                const outcomeBadge = trade.status === 'WIN' 
-                  ? 'bg-emerald-500/10 text-gammaPos' 
-                  : 'bg-rose-500/10 text-gammaNeg';
-                const pnlClass = trade.pnl >= 0 ? 'text-gammaPos' : 'text-gammaNeg';
-
-                return (
-                  <div key={`${trade.id}-${idx}`} className="bg-zinc-950 border border-borderSubtle rounded p-3 flex flex-col gap-1.5 text-xs animate-slide-in">
-                    <div className="flex justify-between font-mono font-semibold">
-                      <span className="text-white">
-                        {trade.ticker} 
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-bold ml-1.5 ${outcomeBadge}`}>
-                          {trade.status}
-                        </span>
-                      </span>
-                      <span className={pnlClass}>
-                        {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-textSecondary text-[10px]">
-                      <span>Exit: ${trade.exitPrice?.toFixed(2) ?? '--'} (Acc: {trade.accuracy}%)</span>
-                      <span>{trade.time}</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
+        <Panel title="Historical Audit Log" subtitle={`${closedTrades.length} records`} flush className="xl:col-span-8 w-full">
+          <DataTable
+            columns={CLOSED_COLUMNS}
+            rows={closedTrades}
+            rowKey={r => r.id}
+            initialSort={{ key: 'time', dir: 'desc' }}
+            maxHeight="420px"
+            emptyText="No logged trials"
+          />
+        </Panel>
       </div>
-    </div>
+    </>
   );
 };
 
