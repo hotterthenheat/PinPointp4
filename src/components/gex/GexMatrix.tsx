@@ -1,4 +1,5 @@
 import { fmtUsd } from '../../data/gex';
+import { heatCellStyle, heatScaleGradient, heatScaleLabels } from './heatmap';
 import type { GexMatrixData } from '../../types/gex';
 
 interface GexMatrixProps {
@@ -7,18 +8,11 @@ interface GexMatrixProps {
 }
 
 /**
- * Strike × expiry exposure heatmap. Diverging palette: emerald (+) ↔ rose (−)
- * over the dark surface — matching the terminal's directional accents — with
- * intensity carrying magnitude. Values stay printed in every cell, so color is
- * never the only channel.
+ * Strike × expiry exposure heatmap. Cell palette comes from heatmap.ts
+ * (mono or diverging mode); values are always printed and the digit color
+ * flips by cell luminance, so color is never the only channel.
  */
-const cellBg = (value: number, maxAbs: number): string => {
-  const t = Math.min(1, Math.abs(value) / maxAbs);
-  const alpha = 0.05 + t * 0.5;
-  return value >= 0 ? `rgba(16,185,129,${alpha.toFixed(3)})` : `rgba(244,63,94,${alpha.toFixed(3)})`;
-};
-
-const GexMatrix = ({ data, spot }: GexMatrixProps) => {
+const GexMatrix = ({ data }: GexMatrixProps) => {
   const { expiries, strikes, cells, maxAbs, spotRowIndex, callWallIndex, putWallIndex } = data;
 
   return (
@@ -77,8 +71,8 @@ const GexMatrix = ({ data, spot }: GexMatrixProps) => {
                   {cells[r].map((cell, c) => (
                     <td
                       key={c}
-                      style={{ backgroundColor: cellBg(cell.value, maxAbs) }}
-                      className={`px-2 py-1 text-right font-mono text-[10px] tnum whitespace-nowrap text-textPrimary ${
+                      style={heatCellStyle(cell.value, maxAbs)}
+                      className={`px-2 py-1 text-right font-mono text-[10px] tnum whitespace-nowrap ${
                         cell.king ? 'shadow-[inset_0_0_0_1px_#eab308]' : ''
                       }`}
                     >
@@ -95,15 +89,12 @@ const GexMatrix = ({ data, spot }: GexMatrixProps) => {
 
       {/* Diverging color scale */}
       <div className="shrink-0 w-9 flex flex-col items-center py-1 select-none">
-        <span className="font-mono text-[9px] text-bull tnum">+{fmtUsd(maxAbs).replace('$', '')}</span>
+        <span className={`font-mono text-[9px] tnum ${heatScaleLabels.pos}`}>+{fmtUsd(maxAbs).replace('$', '')}</span>
         <div
           className="flex-grow w-2.5 my-1.5 rounded-full border border-borderSubtle"
-          style={{
-            background:
-              'linear-gradient(to bottom, rgba(16,185,129,0.85), rgba(16,185,129,0.12) 46%, rgba(20,20,20,1) 50%, rgba(244,63,94,0.12) 54%, rgba(244,63,94,0.85))',
-          }}
+          style={{ background: heatScaleGradient }}
         />
-        <span className="font-mono text-[9px] text-bear tnum">−{fmtUsd(maxAbs).replace('$', '')}</span>
+        <span className={`font-mono text-[9px] tnum ${heatScaleLabels.neg}`}>−{fmtUsd(maxAbs).replace('$', '')}</span>
         <span className="mt-1 font-mono text-[8px] text-textMuted uppercase">gex</span>
       </div>
     </div>

@@ -1,15 +1,10 @@
 import { fmtUsd } from '../../data/gex';
+import { heatCellStyle } from './heatmap';
 import type { BoardTicker } from '../../types/gex';
 
 interface StrikeLadderProps {
   board: BoardTicker;
 }
-
-const cellBg = (value: number, maxAbs: number): string => {
-  const t = Math.min(1, Math.abs(value) / maxAbs);
-  const alpha = 0.04 + t * 0.45;
-  return value >= 0 ? `rgba(16,185,129,${alpha.toFixed(3)})` : `rgba(244,63,94,${alpha.toFixed(3)})`;
-};
 
 /** Single-ticker GEX ladder column with the live price embedded between strikes. */
 const StrikeLadder = ({ board }: StrikeLadderProps) => {
@@ -38,13 +33,13 @@ const StrikeLadder = ({ board }: StrikeLadderProps) => {
         {ladder.map((row, i) => (
           <div key={row.strike}>
             <div
-              style={{ backgroundColor: cellBg(row.value, ladderMaxAbs) }}
+              style={heatCellStyle(row.value, ladderMaxAbs)}
               className="flex items-center justify-between px-2.5 py-[5px] border-b border-borderSubtle/30"
             >
-              <span className="font-mono text-[10px] font-semibold text-textSecondary tnum">
+              <span className="font-mono text-[10px] font-semibold tnum opacity-75">
                 {row.strike % 1 === 0 ? row.strike.toFixed(0) : row.strike.toFixed(2)}
               </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-textPrimary tnum">
+              <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tnum">
                 {row.king && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#eab308]" />}
                 {fmtUsd(row.value)}
               </span>
