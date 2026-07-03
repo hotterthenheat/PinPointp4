@@ -1,17 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
-import { useMarketData } from '../context/MarketDataContext';
-import { buildGexView, fmtUsd } from '../data/gex';
-import PageHeader from '../components/ui/PageHeader';
-import TickerSearch from '../components/ui/TickerSearch';
-import SegmentedControl from '../components/ui/SegmentedControl';
-import MetricGrid from '../components/ui/MetricGrid';
-import StatCard from '../components/ui/StatCard';
-import Panel from '../components/ui/Panel';
-import StrikeChart from '../components/gex/StrikeChart';
-import GexMatrix from '../components/gex/GexMatrix';
-import MiniPane from '../components/gex/MiniPane';
-import StrikeLadder from '../components/gex/StrikeLadder';
-import type { GexMetric, OverlayMode, StrikeRange } from '../types/gex';
+import { useMarketData } from '../../context/MarketDataContext';
+import { buildGexView, fmtUsd } from '../../data/gex';
+import SegmentedControl from '../../components/ui/SegmentedControl';
+import MetricGrid from '../../components/ui/MetricGrid';
+import StatCard from '../../components/ui/StatCard';
+import Panel from '../../components/ui/Panel';
+import StrikeChart from '../../components/gex/StrikeChart';
+import GexMatrix from '../../components/gex/GexMatrix';
+import MiniPane from '../../components/gex/MiniPane';
+import StrikeLadder from '../../components/gex/StrikeLadder';
+import type { GexMetric, OverlayMode, StrikeRange } from '../../types/gex';
 
 const METRIC_OPTIONS = [
   { value: 'GEX', label: 'GEX' },
@@ -30,8 +28,8 @@ const RANGE_OPTIONS = [
   { value: '20', label: '±20' },
 ] as const;
 
-const PinpointGex = () => {
-  const { activeTicker, marketData, changeTicker } = useMarketData();
+const FlowMap = () => {
+  const { activeTicker, marketData } = useMarketData();
   const [metric, setMetric] = useState<GexMetric>('GEX');
   const [overlay, setOverlay] = useState<OverlayMode>('BOTH');
   const [rangeKey, setRangeKey] = useState<'10' | '20'>('10');
@@ -44,25 +42,13 @@ const PinpointGex = () => {
     [marketData, metric, rangeKey]
   );
 
-  const header = (
-    <PageHeader
-      breadcrumb={['Terminal', 'Pinpoint GEX']}
-      title="Dealer Flow Map"
-      subtitle="Strike-level dealer exposure — walls, flip, king node & dark pool flow"
-      actions={<TickerSearch value={activeTicker} onChange={changeTicker} />}
-    />
-  );
-
   if (!view || !marketData) {
     return (
-      <>
-        {header}
-        <Panel className="h-64" bodyClassName="flex items-center justify-center">
-          <span className="font-mono text-[11px] text-textMuted uppercase tracking-widest">
-            Awaiting feed initialization…
-          </span>
-        </Panel>
-      </>
+      <Panel className="h-64" bodyClassName="flex items-center justify-center">
+        <span className="font-mono text-[11px] text-textMuted uppercase tracking-widest">
+          Awaiting feed initialization…
+        </span>
+      </Panel>
     );
   }
 
@@ -71,8 +57,6 @@ const PinpointGex = () => {
 
   return (
     <>
-      {header}
-
       {/* Controls */}
       <div className="flex items-center gap-3 flex-wrap">
         <SegmentedControl ariaLabel="Metric" options={METRIC_OPTIONS} value={metric} onChange={setMetric} />
@@ -164,4 +148,4 @@ const PinpointGex = () => {
   );
 };
 
-export default PinpointGex;
+export default FlowMap;

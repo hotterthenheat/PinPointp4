@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightLeft, CornerDownLeft } from 'lucide-react';
+import { ArrowRightLeft, CornerDownLeft, Crosshair } from 'lucide-react';
 import { NAV_ITEMS } from './nav';
+import { GEX_SUBPAGES } from '../../pages/gex/subnav';
 import { useMarketData } from '../../context/MarketDataContext';
 import Simulator from '../../core/simulator';
 
@@ -35,6 +36,14 @@ const CommandPalette = ({ open, onClose }: CommandPaletteProps) => {
       icon: <item.icon className="w-3.5 h-3.5" />,
       run: () => navigate(item.path),
     }));
+    const gexSubs: PaletteAction[] = GEX_SUBPAGES.map(page => ({
+      id: `nav-${page.path}`,
+      group: 'Navigate',
+      label: `Pinpoint GEX → ${page.label}`,
+      hint: page.subtitle,
+      icon: <Crosshair className="w-3.5 h-3.5" />,
+      run: () => navigate(page.path),
+    }));
     const tickers: PaletteAction[] = Object.keys(Simulator.TICKERS).map(tk => ({
       id: `ticker-${tk}`,
       group: 'Ticker',
@@ -43,7 +52,7 @@ const CommandPalette = ({ open, onClose }: CommandPaletteProps) => {
       icon: <ArrowRightLeft className="w-3.5 h-3.5" />,
       run: () => changeTicker(tk),
     }));
-    return [...nav, ...tickers];
+    return [...nav, ...gexSubs, ...tickers];
   }, [navigate, changeTicker, activeTicker]);
 
   const filtered = useMemo(() => {
