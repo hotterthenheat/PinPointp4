@@ -165,7 +165,7 @@ const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPanePro
           <span className="inline-block w-3 h-0.5 rounded-full bg-[#a78bfa]" /> dark pool
         </span>
       </div>
-      <div className="relative h-[180px]" onDoubleClick={resetView} title="Double-click to reset view">
+      <div className="relative h-[248px]" onDoubleClick={resetView} title="Double-click to reset view">
         <div ref={containerRef} className="absolute inset-0" />
       </div>
     </div>
