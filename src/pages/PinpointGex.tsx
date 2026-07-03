@@ -140,8 +140,9 @@ const PinpointGex = () => {
         className="w-full"
         bodyClassName="p-3"
       >
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-stretch">
-          <div className="xl:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
+        <div className="flex flex-col gap-3">
+          {/* Candle panes — full page width */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
             {board.map(item => (
               <MiniPane
                 key={item.ticker}
@@ -153,7 +154,8 @@ const PinpointGex = () => {
               />
             ))}
           </div>
-          <div className="xl:col-span-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* GEX ladders — full page width */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {board.map(item => (
               <StrikeLadder key={item.ticker} board={item} />
             ))}

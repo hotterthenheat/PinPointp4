@@ -140,10 +140,12 @@ const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPanePro
       candleSeries.createPriceLine({
         price: print.price,
         color: DP,
-        title: `DP $${print.notional.toFixed(2)}B · ${print.date}`,
+        title: `DP $${print.notional.toFixed(2)}B · ${print.date} · ${print.price.toFixed(2)}`,
         lineStyle: LineStyle.Dashed,
         lineWidth: 1,
-        axisLabelVisible: false,
+        axisLabelVisible: true,
+        axisLabelColor: DP,
+        axisLabelTextColor: '#0a0a0a',
       })
     );
   }, [prints]);
