@@ -6,6 +6,7 @@
 */
 
 import type {
+  Candle,
   Greeks,
   Indicators,
   MarketSnapshot,
@@ -84,6 +85,14 @@ const Simulator = (() => {
   const priceHistory: Record<string, number[]> = {};
   const historyLimit = 100;
 
+  // OHLC candle state — one rolling intraday series per ticker
+  const candleHistory: Record<string, Candle[]> = {};
+  const candleTickCount: Record<string, number> = {};
+  const CANDLE_SEED_BARS = 180;
+  const CANDLE_LIMIT = 360;
+  const TICKS_PER_BAR = 4; // each simulated bar aggregates 4 ticks
+  const BAR_SECONDS = 60; // bars are labeled 1 minute apart
+
   function symbolHash(sym: string): number {
     let h = 2166136261;
     for (let i = 0; i < sym.length; i++) {
@@ -103,6 +112,63 @@ const Simulator = (() => {
       priceHistory[sym].push(p);
     }
     cfg.currentPrice = Number(p.toFixed(2));
+    seedCandles(sym);
+  }
+
+  // Seed an intraday OHLC candle buffer walking back from the current price
+  function seedCandles(sym: string): void {
+    const cfg = TICKERS[sym];
+    const bars: Candle[] = [];
+    const nowSec = Math.floor(Date.now() / 1000);
+    const alignedNow = nowSec - (nowSec % BAR_SECONDS);
+    let close = cfg.currentPrice;
+
+    // Walk backwards so the newest bar ends at the current price
+    for (let i = 0; i < CANDLE_SEED_BARS; i++) {
+      const time = alignedNow - i * BAR_SECONDS;
+      const range = cfg.basePrice * cfg.iv * 0.0035 * (0.4 + Math.random());
+      const open = close + (Math.random() - 0.5) * range;
+      const high = Math.max(open, close) + Math.random() * range * 0.5;
+      const low = Math.min(open, close) - Math.random() * range * 0.5;
+      bars.unshift({
+        time,
+        open: Number(open.toFixed(2)),
+        high: Number(high.toFixed(2)),
+        low: Number(low.toFixed(2)),
+        close: Number(close.toFixed(2)),
+        volume: Math.round(2000 + Math.random() * 18000),
+      });
+      close = open;
+    }
+
+    candleHistory[sym] = bars;
+    candleTickCount[sym] = 0;
+  }
+
+  // Fold the latest tick into the current bar; roll a new bar every TICKS_PER_BAR ticks
+  function updateCandles(sym: string): void {
+    const bars = candleHistory[sym];
+    if (!bars || bars.length === 0) return;
+    const price = TICKERS[sym].currentPrice;
+    const count = (candleTickCount[sym] = (candleTickCount[sym] ?? 0) + 1);
+    const last = bars[bars.length - 1];
+
+    if (count % TICKS_PER_BAR === 0) {
+      bars.push({
+        time: last.time + BAR_SECONDS,
+        open: last.close,
+        high: Math.max(last.close, price),
+        low: Math.min(last.close, price),
+        close: price,
+        volume: Math.round(1500 + Math.random() * 9000),
+      });
+      if (bars.length > CANDLE_LIMIT) bars.shift();
+    } else {
+      last.close = price;
+      last.high = Math.max(last.high, price);
+      last.low = Math.min(last.low, price);
+      last.volume += Math.round(500 + Math.random() * 4000);
+    }
   }
 
   /** Register a config for any symbol on demand (synthesized for non-core tickers). */
@@ -330,6 +396,8 @@ const Simulator = (() => {
       if (history.length > historyLimit) {
         history.shift();
       }
+
+      updateCandles(ticker);
     });
 
     const activeConfig = TICKERS[activeTicker];
@@ -382,6 +450,11 @@ const Simulator = (() => {
       return activeTicker;
     },
     getActiveTicker: (): string => activeTicker,
+    /** Live intraday OHLC bars (mutated in place each tick — treat as read-only). */
+    getCandles: (sym: string): Candle[] => {
+      const key = ensureTicker(sym);
+      return candleHistory[key];
+    },
     tick,
     getGreeks: calculateGreeks
   };

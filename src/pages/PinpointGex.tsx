@@ -1,75 +1,165 @@
-import { useEffect, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMarketData } from '../context/MarketDataContext';
-import Charts from '../core/charts';
+import { buildGexView, fmtUsd } from '../data/gex';
 import PageHeader from '../components/ui/PageHeader';
 import TickerSearch from '../components/ui/TickerSearch';
-import Panel from '../components/ui/Panel';
-import StatCard from '../components/ui/StatCard';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import MetricGrid from '../components/ui/MetricGrid';
+import StatCard from '../components/ui/StatCard';
+import Panel from '../components/ui/Panel';
+import StrikeChart from '../components/gex/StrikeChart';
+import GexMatrix from '../components/gex/GexMatrix';
+import MiniPane from '../components/gex/MiniPane';
+import StrikeLadder from '../components/gex/StrikeLadder';
+import type { GexMetric, OverlayMode, StrikeRange } from '../types/gex';
+
+const METRIC_OPTIONS = [
+  { value: 'GEX', label: 'GEX' },
+  { value: 'VEX', label: 'VEX' },
+  { value: 'GEX+VEX', label: 'GEX+VEX' },
+] as const;
+
+const OVERLAY_OPTIONS = [
+  { value: 'NODES', label: 'Nodes' },
+  { value: 'LEVELS', label: 'Levels' },
+  { value: 'BOTH', label: 'Both' },
+] as const;
+
+const RANGE_OPTIONS = [
+  { value: '10', label: '±10' },
+  { value: '20', label: '±20' },
+] as const;
 
 const PinpointGex = () => {
   const { activeTicker, marketData, changeTicker } = useMarketData();
+  const [metric, setMetric] = useState<GexMetric>('GEX');
+  const [overlay, setOverlay] = useState<OverlayMode>('BOTH');
+  const [rangeKey, setRangeKey] = useState<'10' | '20'>('10');
 
-  const gexCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const vannaCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const revRef = useRef(0);
+  const revision = useMemo(() => ++revRef.current, [marketData]);
 
-  useEffect(() => {
-    if (!marketData) return;
-    if (gexCanvasRef.current) {
-      Charts.updateGexChart(gexCanvasRef.current, marketData.chain, marketData.spot);
-    }
-    if (vannaCanvasRef.current) {
-      Charts.renderVannaHeatmap(vannaCanvasRef.current, marketData.spot, marketData.chain);
-    }
-  }, [marketData]);
+  const view = useMemo(
+    () => (marketData ? buildGexView(marketData, metric, Number(rangeKey) as StrikeRange) : null),
+    [marketData, metric, rangeKey]
+  );
 
-  const emaTone = marketData && marketData.spot >= marketData.indicators.ema9 ? 'bull' : 'bear';
+  const header = (
+    <PageHeader
+      breadcrumb={['Terminal', 'Pinpoint GEX']}
+      title="Dealer Flow Map"
+      subtitle="Strike-level dealer exposure — walls, flip, king node & dark pool flow"
+      actions={<TickerSearch value={activeTicker} onChange={changeTicker} />}
+    />
+  );
+
+  if (!view || !marketData) {
+    return (
+      <>
+        {header}
+        <Panel className="h-64" bodyClassName="flex items-center justify-center">
+          <span className="font-mono text-[11px] text-textMuted uppercase tracking-widest">
+            Awaiting feed initialization…
+          </span>
+        </Panel>
+      </>
+    );
+  }
+
+  const { levels, nodes, nodesMaxAbs, matrix, board } = view;
+  const netGex = marketData.chain.reduce((a, n) => a + n.netGex, 0);
 
   return (
     <>
-      <PageHeader
-        breadcrumb={['Terminal', 'Pinpoint GEX']}
-        title="Strike Exposure Profile"
-        subtitle="Strike-by-strike dealer gamma, delta & vega exposure"
-        actions={
-          <TickerSearch value={activeTicker} onChange={changeTicker} />
-        }
-      />
+      {header}
 
-      <MetricGrid min="160px">
-        <StatCard label="Active Ticker" value={activeTicker} sub="0DTE chain" />
-        <StatCard label="Spot Price" value={marketData ? `$${marketData.spot.toFixed(2)}` : '--'} sub="live tick" />
-        <StatCard
-          label="EMA 9"
-          value={marketData ? `$${marketData.indicators.ema9.toFixed(2)}` : '--'}
-          tone={emaTone}
-          sub="fast trend"
-        />
+      {/* Controls */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <SegmentedControl ariaLabel="Metric" options={METRIC_OPTIONS} value={metric} onChange={setMetric} />
+        <SegmentedControl ariaLabel="Overlay" options={OVERLAY_OPTIONS} value={overlay} onChange={setOverlay} />
+        <SegmentedControl ariaLabel="Strike range" options={RANGE_OPTIONS} value={rangeKey} onChange={setRangeKey} />
+        <span className="font-mono text-[10px] text-textMuted uppercase tracking-wider">
+          {matrix.strikes.length} strikes · {matrix.expiries.length} expirations
+        </span>
+      </div>
+
+      {/* Key level stats */}
+      <MetricGrid min="140px">
+        <StatCard label="Spot" value={`$${levels.spot.toFixed(2)}`} sub="live tick" />
+        <StatCard label="King" value={`$${levels.king.toFixed(2)}`} tone="warn" sub="max |exposure| strike" />
+        <StatCard label="Call Wall" value={`$${levels.callWall.toFixed(2)}`} tone="bull" sub="dealer supply" />
+        <StatCard label="Put Wall" value={`$${levels.putWall.toFixed(2)}`} tone="bear" sub="dealer support" />
         <StatCard
           label="Gamma Flip"
-          value={marketData ? `$${marketData.plan.flipZone.toFixed(2)}` : '--'}
-          sub="dealer regime pivot"
+          value={`$${levels.flip.toFixed(2)}`}
+          sub={levels.spot > levels.flip ? 'spot above — stabilizing' : 'spot below — accelerating'}
+        />
+        <StatCard
+          label="Net GEX"
+          value={fmtUsd(netGex)}
+          tone={netGex >= 0 ? 'bull' : 'bear'}
+          sub="book total"
         />
       </MetricGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+      {/* Product 1: strike chart + strike×expiry matrix */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
         <Panel
-          title="GEX Strike Profile"
-          subtitle="net gamma ($M)"
-          className="lg:col-span-2 w-full"
+          title={`${activeTicker} — ${metric} nodes + levels`}
+          subtitle="live tick feed"
+          className="xl:col-span-7 w-full"
           bodyClassName="flex flex-col"
         >
-          <div className="relative flex-grow min-h-[400px] border border-borderSubtle bg-inset rounded-md p-2 overflow-hidden">
-            <canvas ref={gexCanvasRef} className="w-full h-full" />
-          </div>
+          <StrikeChart
+            ticker={activeTicker}
+            revision={revision}
+            levels={levels}
+            nodes={nodes}
+            nodesMaxAbs={nodesMaxAbs}
+            overlay={overlay}
+            height={470}
+          />
         </Panel>
 
-        <Panel title="Vanna Migration" subtitle="drift × expiry" className="w-full" bodyClassName="flex flex-col">
-          <div className="relative flex-grow min-h-[400px] border border-borderSubtle bg-inset rounded-md p-1 overflow-hidden">
-            <canvas ref={vannaCanvasRef} className="w-full h-full" />
-          </div>
+        <Panel
+          title="Strike × Expiry"
+          subtitle={`${metric} per strike per expiration`}
+          flush
+          className="xl:col-span-5 w-full"
+          bodyClassName="p-2 h-[530px]"
+        >
+          <GexMatrix data={matrix} spot={levels.spot} />
         </Panel>
       </div>
+
+      {/* Product 2: multi-ticker flow board */}
+      <Panel
+        title="Multi-Ticker Flow Board"
+        subtitle="dark pool prints · king nodes · net gex ladders"
+        flush
+        className="w-full"
+        bodyClassName="p-3"
+      >
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-stretch">
+          <div className="xl:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
+            {board.map(item => (
+              <MiniPane
+                key={item.ticker}
+                ticker={item.ticker}
+                spot={item.spot}
+                changePercent={item.changePercent}
+                prints={item.prints}
+                revision={revision}
+              />
+            ))}
+          </div>
+          <div className="xl:col-span-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+            {board.map(item => (
+              <StrikeLadder key={item.ticker} board={item} />
+            ))}
+          </div>
+        </div>
+      </Panel>
     </>
   );
 };

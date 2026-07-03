@@ -25,6 +25,16 @@ export interface Greeks {
   charmPut: number;
 }
 
+export interface Candle {
+  /** Unix seconds, strictly increasing, bar-aligned */
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 export interface Indicators {
   rsi: number;
   ema9: number;
