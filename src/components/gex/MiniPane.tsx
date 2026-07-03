@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   createChart,
   CandlestickSeries,
@@ -33,6 +33,13 @@ const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPanePro
   const volumeRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const printLinesRef = useRef<IPriceLine[]>([]);
   const loadedRef = useRef<{ ticker: string; length: number }>({ ticker: '', length: 0 });
+
+  const resetView = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.priceScale('right').applyOptions({ autoScale: true });
+    chart.timeScale().fitContent();
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -156,7 +163,7 @@ const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPanePro
           <span className="inline-block w-3 h-0.5 rounded-full bg-[#a78bfa]" /> dark pool
         </span>
       </div>
-      <div className="relative h-[180px]">
+      <div className="relative h-[180px]" onDoubleClick={resetView} title="Double-click to reset view">
         <div ref={containerRef} className="absolute inset-0" />
       </div>
     </div>

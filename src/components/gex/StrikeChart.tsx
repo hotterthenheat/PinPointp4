@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { RotateCcw } from 'lucide-react';
 import {
   createChart,
   CandlestickSeries,
@@ -40,6 +41,14 @@ const StrikeChart = ({ ticker, revision, levels, nodes, nodesMaxAbs, overlay, he
   const levelLinesRef = useRef<IPriceLine[]>([]);
   const nodeLinesRef = useRef<IPriceLine[]>([]);
   const loadedRef = useRef<{ ticker: string; length: number }>({ ticker: '', length: 0 });
+
+  /** Recenter after the user gets lost panning/zooming: re-enable autoscale + fit data. */
+  const resetView = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.priceScale('right').applyOptions({ autoScale: true });
+    chart.timeScale().fitContent();
+  }, []);
 
   // Mount once
   useEffect(() => {
@@ -208,12 +217,20 @@ const StrikeChart = ({ ticker, revision, levels, nodes, nodesMaxAbs, overlay, he
           </span>
         ))}
         <span className="ml-auto font-mono text-[10px] text-textMuted uppercase tracking-wider">
-          scroll to zoom · drag to pan
+          scroll to zoom · drag to pan · double-click to reset
         </span>
+        <button
+          onClick={resetView}
+          title="Reset view (or double-click the chart)"
+          className="inline-flex items-center gap-1.5 border border-borderSubtle hover:border-borderMuted bg-panel rounded px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-textSecondary hover:text-textPrimary transition-colors"
+        >
+          <RotateCcw className="w-3 h-3" /> Reset
+        </button>
       </div>
       <div
         className="relative flex-grow border border-borderSubtle bg-inset rounded-md overflow-hidden"
         style={{ minHeight: height }}
+        onDoubleClick={resetView}
       >
         <div ref={containerRef} className="absolute inset-0" />
       </div>
