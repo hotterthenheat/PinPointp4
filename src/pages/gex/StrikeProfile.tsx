@@ -54,10 +54,10 @@ const StrikeProfile = () => {
           </span>
         ),
       },
-      { key: 'callOI', header: 'Call OI', align: 'right', sortValue: r => r.callOI, render: r => <span className="text-textSecondary">{fmtOI(r.callOI)}</span> },
-      { key: 'putOI', header: 'Put OI', align: 'right', sortValue: r => r.putOI, render: r => <span className="text-textSecondary">{fmtOI(r.putOI)}</span> },
-      { key: 'call', header: `Call ${metric}`, align: 'right', sortValue: r => r.call, render: r => <span className="text-textSecondary">{fmtUsd(r.call)}</span> },
-      { key: 'put', header: `Put ${metric}`, align: 'right', sortValue: r => r.put, render: r => <span className="text-textSecondary">{fmtUsd(r.put)}</span> },
+      { key: 'callOI', header: 'Call OI', align: 'right', accent: 'bull', sortValue: r => r.callOI, render: r => <span className="text-textSecondary">{fmtOI(r.callOI)}</span> },
+      { key: 'putOI', header: 'Put OI', align: 'right', accent: 'bear', sortValue: r => r.putOI, render: r => <span className="text-textSecondary">{fmtOI(r.putOI)}</span> },
+      { key: 'call', header: `Call ${metric}`, align: 'right', accent: 'bull', sortValue: r => r.call, render: r => <span className="text-textSecondary">{fmtUsd(r.call)}</span> },
+      { key: 'put', header: `Put ${metric}`, align: 'right', accent: 'bear', sortValue: r => r.put, render: r => <span className="text-textSecondary">{fmtUsd(r.put)}</span> },
       {
         key: 'net',
         header: `Net ${metric}`,
