@@ -20,6 +20,8 @@ import type {
   LadderRow,
   MatrixCell,
   NodeLevel,
+  ProfileRow,
+  StrikeProfileData,
   StrikeRange,
 } from '../types/gex';
 
@@ -216,6 +218,99 @@ export function buildBoard(tickers: string[]): BoardTicker[] {
       ladderMaxAbs: maxAbs,
     };
   });
+}
+
+// ---- strike profile (horizontal bar view) --------------------------------------
+
+/** Split a node into its net value and call/put components for a given metric. */
+function profileParts(node: StrikeNode, metric: GexMetric): { net: number; call: number; put: number } {
+  const oi = node.callOI + node.putOI || 1;
+  switch (metric) {
+    case 'GEX':
+      // Real dealer gamma split — calls add gamma (+), short puts subtract it (−)
+      return { net: node.netGex, call: node.callGex, put: node.putGex };
+    case 'VEX': {
+      // Vega exposure carries no per-side field in the chain — apportion by OI share
+      const net = node.netVex * 40;
+      return { net, call: net * (node.callOI / oi), put: net * (node.putOI / oi) };
+    }
+    case 'GEX+VEX': {
+      const vex = node.netVex * 28;
+      const net = node.netGex * 0.7 + vex;
+      return {
+        net,
+        call: node.callGex * 0.7 + vex * (node.callOI / oi),
+        put: node.putGex * 0.7 + vex * (node.putOI / oi),
+      };
+    }
+  }
+}
+
+/** Horizontal strike profile: net diverging bars + a call/put split, windowed to the range. */
+export function buildStrikeProfile(snapshot: MarketSnapshot, metric: GexMetric, range: StrikeRange): StrikeProfileData {
+  const { chain, spot, plan } = snapshot;
+  const levels = buildLevels(snapshot);
+
+  const sorted = [...chain].sort((a, b) => b.strike - a.strike); // descending
+  const spotIdx = Math.max(0, sorted.findIndex(n => n.strike <= spot));
+  const half = range === 10 ? 10 : 15;
+  const start = Math.max(0, spotIdx - half);
+  const window = sorted.slice(start, start + half * 2 + 1);
+
+  const nearest = (target: number) => {
+    let best = 0;
+    let bestDist = Infinity;
+    window.forEach((n, i) => {
+      const d = Math.abs(n.strike - target);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    });
+    return best;
+  };
+  const spotRowIndex = nearest(spot);
+  const callWallIndex = nearest(plan.resistanceWall);
+  const putWallIndex = nearest(plan.supportWall);
+  const flipIndex = nearest(plan.flipZone);
+
+  let netMaxAbs = 1;
+  let splitMaxAbs = 1;
+  let totalCall = 0;
+  let totalPut = 0;
+  let netSum = 0;
+  let kingIndex = 0;
+  let kingAbs = 0;
+
+  const rows: ProfileRow[] = window.map((node, i) => {
+    const { net, call, put } = profileParts(node, metric);
+    netMaxAbs = Math.max(netMaxAbs, Math.abs(net));
+    splitMaxAbs = Math.max(splitMaxAbs, Math.abs(call), Math.abs(put));
+    totalCall += Math.abs(call);
+    totalPut += Math.abs(put);
+    netSum += net;
+    const gAbs = Math.abs(node.netGex);
+    if (gAbs > kingAbs) {
+      kingAbs = gAbs;
+      kingIndex = i;
+    }
+    return {
+      strike: node.strike,
+      net,
+      call,
+      put,
+      callOI: node.callOI,
+      putOI: node.putOI,
+      isSpot: i === spotRowIndex,
+      isCallWall: i === callWallIndex,
+      isPutWall: i === putWallIndex,
+      isFlip: i === flipIndex,
+      isKing: false,
+    };
+  });
+  if (rows[kingIndex]) rows[kingIndex].isKing = true;
+
+  return { rows, netMaxAbs, splitMaxAbs, totalCall, totalPut, netSum, levels };
 }
 
 // ---- top-level assembly --------------------------------------------------------
