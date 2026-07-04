@@ -43,12 +43,12 @@ const RAMPS: Record<'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
     ],
     neg: [
       [0.0, NEUTRAL],
-      [0.4, [150, 95, 60]], //   ember
-      [0.7, [214, 138, 50]], //  amber
-      [1.0, [247, 168, 58]], //  orange
+      [0.4, [196, 122, 54]], //  ember (brighter)
+      [0.7, [242, 158, 48]], //  amber
+      [1.0, [255, 188, 72]], //  bright orange
     ],
     gradient:
-      'linear-gradient(to bottom, #50BEF5 0%, #388CD2 20%, #6078A8 38%, #2a2a2a 50%, #96603C 64%, #D68A32 82%, #F7A83A 100%)',
+      'linear-gradient(to bottom, #50BEF5 0%, #388CD2 20%, #6078A8 38%, #2a2a2a 50%, #C47A36 64%, #F29E30 82%, #FFBC48 100%)',
   },
   'teal-violet': {
     pos: [

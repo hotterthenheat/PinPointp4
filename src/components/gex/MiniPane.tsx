@@ -121,7 +121,10 @@ const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPanePro
     if (loaded.ticker !== ticker || Math.abs(bars.length - loaded.length) > 1) {
       candleSeries.setData(bars.map(toCandle));
       volumeSeries.setData(bars.map(toVolume));
-      if (loaded.ticker !== ticker) chart.timeScale().fitContent();
+      if (loaded.ticker !== ticker) {
+        const len = bars.length;
+        chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, len - 90), to: len + 3 });
+      }
       loadedRef.current = { ticker, length: bars.length };
     } else {
       const last = bars[bars.length - 1];

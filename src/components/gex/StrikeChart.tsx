@@ -11,7 +11,14 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import Simulator from '../../core/simulator';
-import { aggregateCandles, aggregateSnapshots, snapshotsMaxAbs, tfMinutes, type Timeframe } from '../../data/timeframe';
+import {
+  aggregateCandles,
+  aggregateSnapshots,
+  snapshotsMaxAbs,
+  tfMinutes,
+  INTRADAY_MAX_MINUTES,
+  type Timeframe,
+} from '../../data/timeframe';
 import { GexNodesPrimitive } from './gexNodesPrimitive';
 import type { Candle } from '../../types/market';
 import type { KeyLevels, OverlayMode } from '../../types/gex';
@@ -56,17 +63,26 @@ const StrikeChart = ({ ticker, revision, levels, overlay, timeframe, height = 46
   const nodesRef = useRef<GexNodesPrimitive | null>(null);
   const levelLinesRef = useRef<IPriceLine[]>([]);
   const levelsRef = useRef<KeyLevels>(levels);
+  const barCountRef = useRef(0);
   const loadedRef = useRef<{ ticker: string; timeframe: Timeframe }>({ ticker: '', timeframe: '1m' });
 
   // Keep the autoscale provider reading the freshest levels without re-mounting
   levelsRef.current = levels;
 
+  const VISIBLE_BARS = 130;
+  const showRecent = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const len = barCountRef.current;
+    chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, len - VISIBLE_BARS), to: len + 4 });
+  }, []);
+
   const resetView = useCallback(() => {
     const chart = chartRef.current;
     if (!chart) return;
     chart.priceScale('right').applyOptions({ autoScale: true });
-    chart.timeScale().fitContent();
-  }, []);
+    showRecent();
+  }, [showRecent]);
 
   // Mount once
   useEffect(() => {
@@ -164,6 +180,7 @@ const StrikeChart = ({ ticker, revision, levels, overlay, timeframe, height = 46
     const bars = aggregateCandles(base, mins);
     const snaps = aggregateSnapshots(baseGex ?? [], mins);
     const maxAbs = snapshotsMaxAbs(snaps);
+    barCountRef.current = bars.length;
 
     const loaded = loadedRef.current;
     const changed = loaded.ticker !== ticker || loaded.timeframe !== timeframe;
@@ -171,7 +188,7 @@ const StrikeChart = ({ ticker, revision, levels, overlay, timeframe, height = 46
     if (changed) {
       candleSeries.setData(bars.map(toCandle));
       volumeSeries.setData(bars.map(toVolume));
-      chart.timeScale().fitContent();
+      showRecent();
       loadedRef.current = { ticker, timeframe };
     } else {
       const last = bars[bars.length - 1];
@@ -179,9 +196,10 @@ const StrikeChart = ({ ticker, revision, levels, overlay, timeframe, height = 46
       volumeSeries.update(toVolume(last));
     }
 
-    const showNodes = overlay === 'NODES' || overlay === 'BOTH';
+    // Node overlay is intraday-only
+    const showNodes = (overlay === 'NODES' || overlay === 'BOTH') && mins <= INTRADAY_MAX_MINUTES;
     nodes.setData(snaps, maxAbs, showNodes);
-  }, [ticker, revision, timeframe, overlay]);
+  }, [ticker, revision, timeframe, overlay, showRecent]);
 
   // Key-level price lines
   useEffect(() => {

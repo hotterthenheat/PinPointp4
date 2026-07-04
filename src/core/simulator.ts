@@ -86,16 +86,20 @@ const Simulator = (() => {
   const priceHistory: Record<string, number[]> = {};
   const historyLimit = 100;
 
-  // OHLC candle state — one rolling intraday series per ticker
+  // OHLC candle state — one rolling multi-session series per ticker
   const candleHistory: Record<string, Candle[]> = {};
   const candleTickCount: Record<string, number> = {};
-  const CANDLE_SEED_BARS = 180;
-  const CANDLE_LIMIT = 360;
+  const BAR_SECONDS = 60; // 1-minute base bars
   const TICKS_PER_BAR = 4; // each simulated bar aggregates 4 ticks
-  const BAR_SECONDS = 60; // bars are labeled 1 minute apart
+  const SESSION_BARS = 390; // ~6.5h session at 1-min bars
+  const SESSIONS = 22; // ~1 month of sessions seeded up front
+  const CANDLE_LIMIT = SESSIONS * SESSION_BARS + 600;
 
-  // Net-GEX-per-strike snapshots, one per bar, parallel to candleHistory
+  // Net-GEX-per-strike snapshots, parallel to candleHistory but only kept for
+  // recent sessions — the node overlay is an intraday feature.
   const gexHistory: Record<string, GexSnapshot[]> = {};
+  const RECENT_GEX_BARS = 6 * SESSION_BARS;
+  const GEX_LIMIT = RECENT_GEX_BARS + 600;
 
   function symbolHash(sym: string): number {
     let h = 2166136261;
@@ -119,37 +123,47 @@ const Simulator = (() => {
     seedCandles(sym);
   }
 
-  // Seed an intraday OHLC candle buffer walking back from the current price
+  // Seed a multi-session OHLC candle buffer walking back from the current price.
+  // Sessions are one calendar day apart (overnight gap) so daily/weekly
+  // aggregation produces sensible bars.
   function seedCandles(sym: string): void {
     const cfg = TICKERS[sym];
-    const bars: Candle[] = [];
     const nowSec = Math.floor(Date.now() / 1000);
     const alignedNow = nowSec - (nowSec % BAR_SECONDS);
+    const overnightGap = 86400 - (SESSION_BARS - 1) * BAR_SECONDS; // jump to same slot, prev day
+    const bars: Candle[] = [];
     let close = cfg.currentPrice;
+    let t = alignedNow;
 
-    // Walk backwards so the newest bar ends at the current price
-    for (let i = 0; i < CANDLE_SEED_BARS; i++) {
-      const time = alignedNow - i * BAR_SECONDS;
-      const range = cfg.basePrice * cfg.iv * 0.0035 * (0.4 + Math.random());
-      const open = close + (Math.random() - 0.5) * range;
-      const high = Math.max(open, close) + Math.random() * range * 0.5;
-      const low = Math.min(open, close) - Math.random() * range * 0.5;
-      bars.unshift({
-        time,
-        open: Number(open.toFixed(2)),
-        high: Number(high.toFixed(2)),
-        low: Number(low.toFixed(2)),
-        close: Number(close.toFixed(2)),
-        volume: Math.round(2000 + Math.random() * 18000),
-      });
-      close = open;
+    // Build newest→oldest, then reverse
+    for (let s = 0; s < SESSIONS; s++) {
+      for (let i = 0; i < SESSION_BARS; i++) {
+        const range = cfg.basePrice * cfg.iv * 0.0035 * (0.4 + Math.random());
+        const open = close + (Math.random() - 0.5) * range;
+        const high = Math.max(open, close) + Math.random() * range * 0.5;
+        const low = Math.min(open, close) - Math.random() * range * 0.5;
+        bars.push({
+          time: t,
+          open: Number(open.toFixed(2)),
+          high: Number(high.toFixed(2)),
+          low: Number(low.toFixed(2)),
+          close: Number(close.toFixed(2)),
+          volume: Math.round(2000 + Math.random() * 18000),
+        });
+        close = open;
+        t -= i === SESSION_BARS - 1 ? overnightGap : BAR_SECONDS;
+      }
+      // Overnight price gap between sessions
+      close += (Math.random() - 0.5) * cfg.basePrice * cfg.iv * 0.02;
     }
 
+    bars.reverse();
     candleHistory[sym] = bars;
     candleTickCount[sym] = 0;
 
-    // Seed a parallel GEX snapshot per bar so the on-chart node overlay has history
-    gexHistory[sym] = bars.map(b => computeGexSnapshot(sym, b.close, b.time));
+    // GEX snapshots only for the most recent sessions (intraday overlay)
+    const gexStart = Math.max(0, bars.length - RECENT_GEX_BARS);
+    gexHistory[sym] = bars.slice(gexStart).map(b => computeGexSnapshot(sym, b.close, b.time));
   }
 
   // Net GEX (all-expiry proxy) per strike at a given price, captured as one snapshot
@@ -181,7 +195,7 @@ const Simulator = (() => {
 
       if (gh) {
         gh.push(computeGexSnapshot(sym, price, time));
-        if (gh.length > CANDLE_LIMIT) gh.shift();
+        if (gh.length > GEX_LIMIT) gh.shift();
       }
     } else {
       last.close = price;

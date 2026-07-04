@@ -6,14 +6,20 @@
 
 import type { Candle, GexSnapshot } from '../types/market';
 
-export type Timeframe = '1m' | '5m' | '15m' | '1h';
+export type Timeframe = '1m' | '5m' | '15m' | '30m' | '1h' | '1D' | '1W';
 
 export const TIMEFRAMES: { value: Timeframe; label: string; minutes: number }[] = [
   { value: '1m', label: '1m', minutes: 1 },
   { value: '5m', label: '5m', minutes: 5 },
   { value: '15m', label: '15m', minutes: 15 },
+  { value: '30m', label: '30m', minutes: 30 },
   { value: '1h', label: '1h', minutes: 60 },
+  { value: '1D', label: '1D', minutes: 1440 },
+  { value: '1W', label: '1W', minutes: 10080 },
 ];
+
+/** Node overlay is an intraday feature — hidden at daily/weekly. */
+export const INTRADAY_MAX_MINUTES = 60;
 
 export function tfMinutes(tf: Timeframe): number {
   return TIMEFRAMES.find(t => t.value === tf)?.minutes ?? 1;
