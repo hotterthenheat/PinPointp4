@@ -17,6 +17,7 @@ import type { CSSProperties } from 'react';
   Flip HEAT_MODE to switch instantly.
 */
 export type HeatMode =
+  | 'spectrum'
   | 'amber'
   | 'redwood'
   | 'thermal'
@@ -27,7 +28,7 @@ export type HeatMode =
   | 'diverging';
 
 // `as HeatMode` stops TS from narrowing to the literal so the other branches stay legal.
-export const HEAT_MODE = 'amber' as HeatMode;
+export const HEAT_MODE = 'spectrum' as HeatMode;
 
 type RGB = [number, number, number];
 type Stops = [number, RGB][];
@@ -41,7 +42,23 @@ interface RampPalette {
 }
 
 // Ramps run from neutral (t=0) → extreme (t=1)
-const RAMPS: Record<'amber' | 'redwood' | 'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
+const RAMPS: Record<'spectrum' | 'amber' | 'redwood' | 'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
+  // Periwinkle → blue → cyan (+) ↔ pale pink → plum (−), gray neutral
+  spectrum: {
+    pos: [
+      [0.0, NEUTRAL],
+      [0.4, [137, 161, 239]], // #89A1EF periwinkle
+      [0.7, [0, 165, 224]], //   #00A5E0 fresh sky
+      [1.0, [50, 203, 255]], //  #32CBFF sky aqua
+    ],
+    neg: [
+      [0.0, NEUTRAL],
+      [0.4, [254, 206, 241]], // #FECEF1 petal frost
+      [1.0, [239, 156, 218]], // #EF9CDA plum
+    ],
+    gradient:
+      'linear-gradient(to bottom, #32CBFF 0%, #00A5E0 18%, #89A1EF 38%, #2a2a2a 50%, #FECEF1 72%, #EF9CDA 100%)',
+  },
   // Cool blue (+) ↔ bright amber/gold (−). High-contrast on dark; uses the
   // requested FFD000/FFB700 yellows for the strongly-visible negative pole.
   amber: {
