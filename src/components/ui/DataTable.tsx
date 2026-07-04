@@ -65,9 +65,9 @@ const DataTable = <T,>({
               <th
                 key={col.key}
                 style={col.width ? { width: col.width } : undefined}
-                className={`px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-textMuted whitespace-nowrap ${
+                className={`px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-textSecondary whitespace-nowrap ${
                   col.align === 'right' ? 'text-right' : 'text-left'
-                } ${col.sortValue ? 'cursor-pointer select-none hover:text-textSecondary' : ''}`}
+                } ${col.sortValue ? 'cursor-pointer select-none hover:text-textPrimary' : ''}`}
                 onClick={() => toggleSort(col)}
               >
                 <span className="inline-flex items-center gap-1">
