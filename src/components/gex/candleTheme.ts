@@ -14,13 +14,13 @@ export interface CandleTheme {
 }
 
 export const CANDLE_THEMES = {
-  // Neutral, premium — cool light up / slate down
+  // Neutral, premium — near-white up / slate down
   mono: {
-    up: '#c7cfd9',
+    up: '#eef1f5',
     down: '#565c68',
-    wickUp: '#c7cfd9',
+    wickUp: '#eef1f5',
     wickDown: '#565c68',
-    volUp: 'rgba(199,207,217,0.20)',
+    volUp: 'rgba(238,241,245,0.22)',
     volDown: 'rgba(86,92,104,0.30)',
   },
   // Classic emerald / rose

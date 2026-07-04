@@ -41,7 +41,7 @@ const AppShell = () => {
         <main className="flex-grow overflow-y-auto">
           <div
             key={location.pathname}
-            className="px-4 lg:px-6 py-5 max-w-[1600px] mx-auto flex flex-col gap-4 animate-view-in"
+            className="w-full px-4 lg:px-6 2xl:px-8 py-5 flex flex-col gap-4 animate-view-in"
           >
             <Outlet />
           </div>
