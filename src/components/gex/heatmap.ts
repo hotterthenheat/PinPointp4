@@ -3,42 +3,92 @@ import type { CSSProperties } from 'react';
 /*
   Heatmap cell coloring for the GEX matrix + ladders.
 
-  'spectrum'  — diverging Coolors palette: positive glows through periwinkle
-                → blue → cyan, negative through pale pink → plum, gray neutral
-                at zero. Digit color flips by cell luminance.
-  'hybrid'    — mono base, extreme cells pick up a whisper of emerald/rose.
-  'mono'      — black↔white spectrum, gray neutral.
-  'diverging' — emerald (+) / rose (−) washes.
+  Diverging ramp palettes (positive = stabilizing GEX, negative = accelerating):
+    'thermal'     — cool steel/ice-blue (+) ↔ warm amber/orange (−). Reads as a
+                    pressure map: hot = dealers accelerate, cool = they stabilize.
+    'teal-violet' — teal (+) ↔ violet (−). Modern, distinctive.
+    'gold-slate'  — gold (+) ↔ slate-blue (−). Premium, restrained.
+
+  Legacy modes:
+    'hybrid'      — mono base, extreme cells pick up a whisper of emerald/rose.
+    'mono'        — black↔white spectrum, gray neutral.
+    'diverging'   — emerald (+) / rose (−) washes.
 
   Flip HEAT_MODE to switch instantly.
 */
-export type HeatMode = 'spectrum' | 'hybrid' | 'mono' | 'diverging';
+export type HeatMode = 'thermal' | 'teal-violet' | 'gold-slate' | 'hybrid' | 'mono' | 'diverging';
 
 // `as HeatMode` stops TS from narrowing to the literal so the other branches stay legal.
-export const HEAT_MODE = 'spectrum' as HeatMode;
+export const HEAT_MODE = 'thermal' as HeatMode;
 
 type RGB = [number, number, number];
+type Stops = [number, RGB][];
 
 const NEUTRAL: RGB = [42, 42, 42]; // dark gray — sits calmly on the panel surface
 
-// Diverging ramp stops from neutral (t=0) → extreme (t=1), per the Coolors palette
-const POS_STOPS: [number, RGB][] = [
-  [0.0, NEUTRAL],
-  [0.4, [137, 161, 239]], // 89A1EF · periwinkle
-  [0.7, [0, 165, 224]], //   00A5E0 · fresh sky
-  [1.0, [50, 203, 255]], //  32CBFF · sky aqua
-];
-const NEG_STOPS: [number, RGB][] = [
-  [0.0, NEUTRAL],
-  [0.4, [254, 206, 241]], // FECEF1 · petal frost
-  [1.0, [239, 156, 218]], // EF9CDA · plum
-];
+interface RampPalette {
+  pos: Stops;
+  neg: Stops;
+  gradient: string;
+}
+
+// Ramps run from neutral (t=0) → extreme (t=1)
+const RAMPS: Record<'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
+  thermal: {
+    pos: [
+      [0.0, NEUTRAL],
+      [0.4, [96, 120, 168]], //  slate
+      [0.7, [56, 140, 210]], //  steel blue
+      [1.0, [80, 190, 245]], //  ice blue
+    ],
+    neg: [
+      [0.0, NEUTRAL],
+      [0.4, [150, 95, 60]], //   ember
+      [0.7, [214, 138, 50]], //  amber
+      [1.0, [247, 168, 58]], //  orange
+    ],
+    gradient:
+      'linear-gradient(to bottom, #50BEF5 0%, #388CD2 20%, #6078A8 38%, #2a2a2a 50%, #96603C 64%, #D68A32 82%, #F7A83A 100%)',
+  },
+  'teal-violet': {
+    pos: [
+      [0.0, NEUTRAL],
+      [0.45, [40, 120, 110]],
+      [0.75, [30, 170, 150]],
+      [1.0, [45, 212, 191]],
+    ],
+    neg: [
+      [0.0, NEUTRAL],
+      [0.45, [110, 88, 150]],
+      [0.75, [140, 110, 220]],
+      [1.0, [167, 139, 250]],
+    ],
+    gradient:
+      'linear-gradient(to bottom, #2DD4BF 0%, #1EAA96 22%, #2a2a2a 50%, #8C6EDC 78%, #A78BFA 100%)',
+  },
+  'gold-slate': {
+    pos: [
+      [0.0, NEUTRAL],
+      [0.45, [138, 112, 52]],
+      [0.75, [196, 158, 60]],
+      [1.0, [224, 184, 78]],
+    ],
+    neg: [
+      [0.0, NEUTRAL],
+      [0.45, [78, 94, 128]],
+      [0.75, [82, 112, 168]],
+      [1.0, [110, 140, 198]],
+    ],
+    gradient:
+      'linear-gradient(to bottom, #E0B84E 0%, #C49E3C 22%, #2a2a2a 50%, #5270A8 78%, #6E8CC6 100%)',
+  },
+};
 
 function lerp(a: number, b: number, u: number): number {
   return Math.round(a + (b - a) * u);
 }
 
-function rampColor(stops: [number, RGB][], t: number): RGB {
+function rampColor(stops: Stops, t: number): RGB {
   for (let i = 0; i < stops.length - 1; i++) {
     const [t0, c0] = stops[i];
     const [t1, c1] = stops[i + 1];
@@ -59,14 +109,16 @@ const ROSE: RGB = [244, 63, 94];
 const TINT_START = 0.78;
 const TINT_MAX = 0.5;
 
+const ramp = RAMPS[HEAT_MODE as keyof typeof RAMPS];
+
 export function heatCellStyle(value: number, maxAbs: number): CSSProperties {
   const t = Math.min(1, Math.abs(value) / (maxAbs || 1));
 
-  if (HEAT_MODE === 'spectrum') {
-    const rgb = rampColor(value >= 0 ? POS_STOPS : NEG_STOPS, t);
+  if (ramp) {
+    const rgb = rampColor(value >= 0 ? ramp.pos : ramp.neg, t);
     return {
       backgroundColor: `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`,
-      color: perceivedLuminance(rgb) > 0.58 ? '#0a0a0a' : '#ededed',
+      color: perceivedLuminance(rgb) > 0.55 ? '#0a0a0a' : '#ededed',
     };
   }
 
@@ -100,14 +152,13 @@ export function heatCellStyle(value: number, maxAbs: number): CSSProperties {
   };
 }
 
-export const heatScaleGradient: string =
-  HEAT_MODE === 'spectrum'
-    ? 'linear-gradient(to bottom, #32CBFF 0%, #00A5E0 18%, #89A1EF 38%, #2a2a2a 50%, #FECEF1 72%, #EF9CDA 100%)'
-    : HEAT_MODE === 'diverging'
-      ? 'linear-gradient(to bottom, rgba(16,185,129,0.85), rgba(16,185,129,0.12) 46%, rgba(20,20,20,1) 50%, rgba(244,63,94,0.12) 54%, rgba(244,63,94,0.85))'
-      : HEAT_MODE === 'hybrid'
-        ? 'linear-gradient(to bottom, rgb(126,210,180), rgb(235,235,235) 14%, rgb(61,61,61) 50%, rgb(5,5,5) 86%, rgb(122,32,47))'
-        : 'linear-gradient(to bottom, rgb(235,235,235), rgb(61,61,61) 50%, rgb(5,5,5))';
+export const heatScaleGradient: string = ramp
+  ? ramp.gradient
+  : HEAT_MODE === 'diverging'
+    ? 'linear-gradient(to bottom, rgba(16,185,129,0.85), rgba(16,185,129,0.12) 46%, rgba(20,20,20,1) 50%, rgba(244,63,94,0.12) 54%, rgba(244,63,94,0.85))'
+    : HEAT_MODE === 'hybrid'
+      ? 'linear-gradient(to bottom, rgb(126,210,180), rgb(235,235,235) 14%, rgb(61,61,61) 50%, rgb(5,5,5) 86%, rgb(122,32,47))'
+      : 'linear-gradient(to bottom, rgb(235,235,235), rgb(61,61,61) 50%, rgb(5,5,5))';
 
 /** Scale end-label classes (sign already carried by the printed values). */
 export const heatScaleLabels =
