@@ -22,9 +22,13 @@ const SubNav = ({ items, ariaLabel }: SubNavProps) => {
           key={item.path}
           to={item.path}
           className={({ isActive }) =>
-            `px-3 py-1.5 font-mono text-xs font-medium transition-colors whitespace-nowrap hover:bg-white hover:text-black ${
+            `px-3 py-1.5 font-mono text-xs font-medium transition-colors whitespace-nowrap ${
               i > 0 ? 'border-l border-borderSubtle' : ''
-            } ${isActive ? 'bg-select/[0.08] text-select' : 'text-textSecondary'}`
+            } ${
+              isActive
+                ? 'bg-white text-black'
+                : 'text-textSecondary hover:text-textPrimary hover:bg-white/[0.03]'
+            }`
           }
         >
           {item.label}
