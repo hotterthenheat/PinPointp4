@@ -32,14 +32,14 @@ const StrikeLadder = ({ board }: StrikeLadderProps) => {
         {spotAfterIndex === -0.5 && <SpotMarker ticker={ticker} spot={spot} />}
         {ladder.map((row, i) => (
           <div key={row.strike}>
-            <div
-              style={heatCellStyle(row.value, ladderMaxAbs)}
-              className="flex items-center justify-between px-2.5 py-[5px] border-b border-borderSubtle/30"
-            >
-              <span className="font-mono text-[10px] font-semibold tnum opacity-75">
+            <div className="flex items-stretch border-b border-borderSubtle/30">
+              <span className="flex items-center shrink-0 w-[52px] px-2 py-[5px] bg-[#0c0c0c] border-r border-borderSubtle font-mono text-[10px] font-semibold tnum text-textPrimary">
                 {row.strike % 1 === 0 ? row.strike.toFixed(0) : row.strike.toFixed(2)}
               </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tnum">
+              <span
+                style={heatCellStyle(row.value, ladderMaxAbs)}
+                className="flex flex-grow items-center justify-end gap-1.5 px-2.5 py-[5px] font-mono text-[10px] font-semibold tnum"
+              >
                 {row.king && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#eab308]" />}
                 {fmtUsd(row.value)}
               </span>

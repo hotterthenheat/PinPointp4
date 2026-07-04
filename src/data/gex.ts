@@ -201,8 +201,10 @@ function buildPrints(ticker: string, spot: number): DarkPoolPrint[] {
   return prints;
 }
 
-function buildBoard(): BoardTicker[] {
-  return Simulator.WATCHLIST.map(ticker => {
+/** Build the multi-ticker flow board for an arbitrary, user-chosen set of tickers. */
+export function buildBoard(tickers: string[]): BoardTicker[] {
+  return tickers.map(raw => {
+    const ticker = Simulator.ensureTicker(raw);
     const cfg = Simulator.TICKERS[ticker];
     const { ladder, maxAbs } = buildLadder(ticker, cfg.currentPrice, cfg.step);
     return {
@@ -225,6 +227,5 @@ export function buildGexView(snapshot: MarketSnapshot, metric: GexMetric, range:
     nodes,
     nodesMaxAbs: maxAbs,
     matrix: buildMatrix(snapshot, metric, range, levels.king),
-    board: buildBoard(),
   };
 }

@@ -20,11 +20,9 @@ const SegmentedControl = <V extends string>({ options, value, onChange, ariaLabe
             key={opt.value}
             onClick={() => onChange(opt.value)}
             aria-pressed={active}
-            className={`px-3 py-1.5 font-mono text-xs font-medium transition-colors ${i > 0 ? 'border-l border-borderSubtle' : ''} ${
-              active
-                ? 'bg-select/[0.08] text-select'
-                : 'text-textSecondary hover:text-textPrimary hover:bg-white/[0.03]'
-            }`}
+            className={`px-3 py-1.5 font-mono text-xs font-medium transition-colors hover:bg-white hover:text-black ${
+              i > 0 ? 'border-l border-borderSubtle' : ''
+            } ${active ? 'bg-select/[0.08] text-select' : 'text-textSecondary'}`}
           >
             {opt.label}
           </button>

@@ -74,5 +74,4 @@ export interface GexView {
   nodes: NodeLevel[];
   nodesMaxAbs: number;
   matrix: GexMatrixData;
-  board: BoardTicker[];
 }

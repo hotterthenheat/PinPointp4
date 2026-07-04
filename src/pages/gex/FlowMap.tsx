@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMarketData } from '../../context/MarketDataContext';
-import { buildGexView } from '../../data/gex';
+import { buildGexView, buildBoard } from '../../data/gex';
+import Simulator from '../../core/simulator';
 import SegmentedControl from '../../components/ui/SegmentedControl';
 import Panel from '../../components/ui/Panel';
 import StrikeChart from '../../components/gex/StrikeChart';
@@ -35,6 +36,7 @@ const FlowMap = () => {
   const [overlay, setOverlay] = useState<OverlayMode>('BOTH');
   const [rangeKey, setRangeKey] = useState<'10' | '20'>('10');
   const [timeframe, setTimeframe] = useState<Timeframe>('1m');
+  const [boardTickers, setBoardTickers] = useState<string[]>(() => [...Simulator.WATCHLIST]);
 
   const revRef = useRef(0);
   const revision = useMemo(() => ++revRef.current, [marketData]);
@@ -43,6 +45,11 @@ const FlowMap = () => {
     () => (marketData ? buildGexView(marketData, metric, Number(rangeKey) as StrikeRange) : null),
     [marketData, metric, rangeKey]
   );
+
+  const board = useMemo(() => buildBoard(boardTickers), [boardTickers, marketData]);
+
+  const setBoardTicker = (index: number, symbol: string) =>
+    setBoardTickers(prev => prev.map((t, i) => (i === index ? symbol.toUpperCase() : t)));
 
   if (!view || !marketData) {
     return (
@@ -54,7 +61,7 @@ const FlowMap = () => {
     );
   }
 
-  const { levels, matrix, board } = view;
+  const { levels, matrix } = view;
 
   return (
     <>
@@ -115,20 +122,21 @@ const FlowMap = () => {
       >
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-stretch">
           <div className="xl:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
-            {board.map(item => (
+            {board.map((item, i) => (
               <MiniPane
-                key={item.ticker}
+                key={i}
                 ticker={item.ticker}
                 spot={item.spot}
                 changePercent={item.changePercent}
                 prints={item.prints}
                 revision={revision}
+                onTickerChange={sym => setBoardTicker(i, sym)}
               />
             ))}
           </div>
           <div className="xl:col-span-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-            {board.map(item => (
-              <StrikeLadder key={item.ticker} board={item} />
+            {board.map((item, i) => (
+              <StrikeLadder key={i} board={item} />
             ))}
           </div>
         </div>
