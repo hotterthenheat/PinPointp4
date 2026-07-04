@@ -228,8 +228,8 @@ const StrikeChart = ({ ticker, revision, levels, overlay, timeframe, height = 46
           { label: 'Put Wall', cls: 'bg-bear' },
           { label: 'Flip', cls: 'bg-warn' },
           { label: 'King', cls: 'bg-[#eab308]' },
-          { label: '+GEX node', cls: 'bg-[#739ab9]' },
-          { label: '−GEX node', cls: 'bg-[#b02a29]' },
+          { label: '+GEX node', cls: 'bg-[#4A96D0]' },
+          { label: '−GEX node', cls: 'bg-[#FFD000]' },
         ].map(item => (
           <span key={item.label} className="flex items-center gap-1.5 font-mono text-[10px] text-textSecondary">
             <span className={`inline-block w-3 h-0.5 rounded-full ${item.cls}`} />

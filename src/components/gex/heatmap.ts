@@ -16,10 +16,18 @@ import type { CSSProperties } from 'react';
 
   Flip HEAT_MODE to switch instantly.
 */
-export type HeatMode = 'redwood' | 'thermal' | 'teal-violet' | 'gold-slate' | 'hybrid' | 'mono' | 'diverging';
+export type HeatMode =
+  | 'amber'
+  | 'redwood'
+  | 'thermal'
+  | 'teal-violet'
+  | 'gold-slate'
+  | 'hybrid'
+  | 'mono'
+  | 'diverging';
 
 // `as HeatMode` stops TS from narrowing to the literal so the other branches stay legal.
-export const HEAT_MODE = 'redwood' as HeatMode;
+export const HEAT_MODE = 'amber' as HeatMode;
 
 type RGB = [number, number, number];
 type Stops = [number, RGB][];
@@ -33,7 +41,25 @@ interface RampPalette {
 }
 
 // Ramps run from neutral (t=0) → extreme (t=1)
-const RAMPS: Record<'redwood' | 'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
+const RAMPS: Record<'amber' | 'redwood' | 'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
+  // Cool blue (+) ↔ bright amber/gold (−). High-contrast on dark; uses the
+  // requested FFD000/FFB700 yellows for the strongly-visible negative pole.
+  amber: {
+    pos: [
+      [0.0, NEUTRAL],
+      [0.4, [46, 92, 132]],
+      [0.72, [74, 150, 208]],
+      [1.0, [122, 196, 240]],
+    ],
+    neg: [
+      [0.0, NEUTRAL],
+      [0.4, [150, 110, 24]],
+      [0.72, [255, 208, 0]], //  #FFD000 jonquil
+      [1.0, [255, 183, 0]], //   #FFB700 selective yellow
+    ],
+    gradient:
+      'linear-gradient(to bottom, #7AC4F0 0%, #4A96D0 20%, #2E5C84 38%, #2A2929 50%, #966E18 62%, #FFD000 82%, #FFB700 100%)',
+  },
   // Cool Blue / Light Grayish (+) ↔ Redwood / Burnt Umber (−), gray neutral
   redwood: {
     pos: [
