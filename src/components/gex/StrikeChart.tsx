@@ -20,6 +20,7 @@ import {
   type Timeframe,
 } from '../../data/timeframe';
 import { GexNodesPrimitive } from './gexNodesPrimitive';
+import { candleTheme } from './candleTheme';
 import type { Candle } from '../../types/market';
 import type { KeyLevels, OverlayMode } from '../../types/gex';
 
@@ -33,8 +34,9 @@ interface StrikeChartProps {
   height?: number;
 }
 
-const UP = '#10b981';
-const DOWN = '#f43f5e';
+// Wall / flip / king overlay colors (independent of candle theme)
+const CALL_WALL = '#10b981';
+const PUT_WALL = '#f43f5e';
 
 const toCandle = (b: Candle) => ({
   time: b.time as UTCTimestamp,
@@ -46,7 +48,7 @@ const toCandle = (b: Candle) => ({
 const toVolume = (b: Candle) => ({
   time: b.time as UTCTimestamp,
   value: b.volume,
-  color: b.close >= b.open ? 'rgba(16,185,129,0.28)' : 'rgba(244,63,94,0.28)',
+  color: b.close >= b.open ? candleTheme.volUp : candleTheme.volDown,
 });
 
 /**
@@ -111,12 +113,12 @@ const StrikeChart = ({ ticker, revision, levels, overlay, timeframe, height = 46
     });
 
     const candles = chart.addSeries(CandlestickSeries, {
-      upColor: UP,
-      downColor: DOWN,
-      borderUpColor: UP,
-      borderDownColor: DOWN,
-      wickUpColor: UP,
-      wickDownColor: DOWN,
+      upColor: candleTheme.up,
+      downColor: candleTheme.down,
+      borderUpColor: candleTheme.up,
+      borderDownColor: candleTheme.down,
+      wickUpColor: candleTheme.wickUp,
+      wickDownColor: candleTheme.wickDown,
       priceLineVisible: true,
       priceLineColor: 'rgba(237,237,237,0.4)',
       priceLineStyle: LineStyle.Dotted,
@@ -212,8 +214,8 @@ const StrikeChart = ({ ticker, revision, levels, overlay, timeframe, height = 46
       const mk = (price: number, color: string, title: string, style: LineStyle, width: 1 | 2 = 1) =>
         candleSeries.createPriceLine({ price, color, title, lineStyle: style, lineWidth: width, axisLabelVisible: true });
       levelLinesRef.current = [
-        mk(levels.callWall, UP, 'CALL WALL', LineStyle.Solid),
-        mk(levels.putWall, DOWN, 'PUT WALL', LineStyle.Solid),
+        mk(levels.callWall, CALL_WALL, 'CALL WALL', LineStyle.Solid),
+        mk(levels.putWall, PUT_WALL, 'PUT WALL', LineStyle.Solid),
         mk(levels.flip, '#f59e0b', 'FLIP', LineStyle.Dashed),
         mk(levels.king, '#eab308', 'KING', LineStyle.Solid, 2),
       ];

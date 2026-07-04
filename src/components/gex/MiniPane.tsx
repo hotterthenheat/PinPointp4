@@ -10,6 +10,7 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import Simulator from '../../core/simulator';
+import { candleTheme } from './candleTheme';
 import type { DarkPoolPrint } from '../../types/gex';
 
 interface MiniPaneProps {
@@ -21,8 +22,8 @@ interface MiniPaneProps {
   revision: number;
 }
 
-const UP = '#10b981';
-const DOWN = '#f43f5e';
+const UP = candleTheme.up;
+const DOWN = candleTheme.down;
 const DP = '#a78bfa';
 
 /** Compact candlestick pane with dark-pool print levels. Same smoothness contract as StrikeChart. */
@@ -114,7 +115,7 @@ const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPanePro
     const toVolume = (b: (typeof bars)[number]) => ({
       time: b.time as UTCTimestamp,
       value: b.volume,
-      color: b.close >= b.open ? 'rgba(16,185,129,0.25)' : 'rgba(244,63,94,0.25)',
+      color: b.close >= b.open ? candleTheme.volUp : candleTheme.volDown,
     });
 
     const loaded = loadedRef.current;
