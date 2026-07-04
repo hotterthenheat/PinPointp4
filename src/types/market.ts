@@ -35,6 +35,18 @@ export interface Candle {
   volume: number;
 }
 
+export interface GexLevel {
+  strike: number;
+  /** Net GEX at this strike (summed across expiries), signed dollars */
+  value: number;
+}
+
+/** Net GEX across strikes captured at one bar-aligned moment. */
+export interface GexSnapshot {
+  time: number;
+  levels: GexLevel[];
+}
+
 export interface Indicators {
   rsi: number;
   ema9: number;

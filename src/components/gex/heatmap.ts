@@ -104,6 +104,17 @@ function perceivedLuminance([r, g, b]: RGB): number {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
+/** Raw ramp color for a signed value — used by the on-chart node overlay. */
+export function heatRgb(value: number, maxAbs: number): RGB {
+  const t = Math.min(1, Math.abs(value) / (maxAbs || 1));
+  const r = RAMPS[HEAT_MODE as keyof typeof RAMPS];
+  if (r) return rampColor(value >= 0 ? r.pos : r.neg, t);
+  // grayscale fallback for the legacy mono/hybrid/diverging modes
+  const lum = value >= 0 ? 0.3 + t * 0.6 : 0.3;
+  const c = Math.round(lum * 255);
+  return [c, c, c];
+}
+
 const EMERALD: RGB = [16, 185, 129];
 const ROSE: RGB = [244, 63, 94];
 const TINT_START = 0.78;

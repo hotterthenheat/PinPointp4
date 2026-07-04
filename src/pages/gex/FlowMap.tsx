@@ -9,6 +9,7 @@ import StrikeChart from '../../components/gex/StrikeChart';
 import GexMatrix from '../../components/gex/GexMatrix';
 import MiniPane from '../../components/gex/MiniPane';
 import StrikeLadder from '../../components/gex/StrikeLadder';
+import { TIMEFRAMES, type Timeframe } from '../../data/timeframe';
 import type { GexMetric, OverlayMode, StrikeRange } from '../../types/gex';
 
 const METRIC_OPTIONS = [
@@ -28,11 +29,14 @@ const RANGE_OPTIONS = [
   { value: '20', label: '±20' },
 ] as const;
 
+const TIMEFRAME_OPTIONS = TIMEFRAMES.map(t => ({ value: t.value, label: t.label }));
+
 const FlowMap = () => {
   const { activeTicker, marketData } = useMarketData();
   const [metric, setMetric] = useState<GexMetric>('GEX');
   const [overlay, setOverlay] = useState<OverlayMode>('BOTH');
   const [rangeKey, setRangeKey] = useState<'10' | '20'>('10');
+  const [timeframe, setTimeframe] = useState<Timeframe>('1m');
 
   const revRef = useRef(0);
   const revision = useMemo(() => ++revRef.current, [marketData]);
@@ -52,13 +56,14 @@ const FlowMap = () => {
     );
   }
 
-  const { levels, nodes, nodesMaxAbs, matrix, board } = view;
+  const { levels, matrix, board } = view;
   const netGex = marketData.chain.reduce((a, n) => a + n.netGex, 0);
 
   return (
     <>
       {/* Controls */}
       <div className="flex items-center gap-3 flex-wrap">
+        <SegmentedControl ariaLabel="Timeframe" options={TIMEFRAME_OPTIONS} value={timeframe} onChange={setTimeframe} />
         <SegmentedControl ariaLabel="Metric" options={METRIC_OPTIONS} value={metric} onChange={setMetric} />
         <SegmentedControl ariaLabel="Overlay" options={OVERLAY_OPTIONS} value={overlay} onChange={setOverlay} />
         <SegmentedControl ariaLabel="Strike range" options={RANGE_OPTIONS} value={rangeKey} onChange={setRangeKey} />
@@ -98,9 +103,8 @@ const FlowMap = () => {
             ticker={activeTicker}
             revision={revision}
             levels={levels}
-            nodes={nodes}
-            nodesMaxAbs={nodesMaxAbs}
             overlay={overlay}
+            timeframe={timeframe}
             height={470}
           />
         </Panel>

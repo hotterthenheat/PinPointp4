@@ -11,38 +11,56 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import Simulator from '../../core/simulator';
-import type { KeyLevels, NodeLevel, OverlayMode } from '../../types/gex';
+import { aggregateCandles, aggregateSnapshots, snapshotsMaxAbs, tfMinutes, type Timeframe } from '../../data/timeframe';
+import { GexNodesPrimitive } from './gexNodesPrimitive';
+import type { Candle } from '../../types/market';
+import type { KeyLevels, OverlayMode } from '../../types/gex';
 
 interface StrikeChartProps {
   ticker: string;
   /** Bumped every simulator tick so the chart folds in the newest bar */
   revision: number;
   levels: KeyLevels;
-  nodes: NodeLevel[];
-  nodesMaxAbs: number;
   overlay: OverlayMode;
+  timeframe: Timeframe;
   height?: number;
 }
 
 const UP = '#10b981';
 const DOWN = '#f43f5e';
 
+const toCandle = (b: Candle) => ({
+  time: b.time as UTCTimestamp,
+  open: b.open,
+  high: b.high,
+  low: b.low,
+  close: b.close,
+});
+const toVolume = (b: Candle) => ({
+  time: b.time as UTCTimestamp,
+  value: b.volume,
+  color: b.close >= b.open ? 'rgba(16,185,129,0.28)' : 'rgba(244,63,94,0.28)',
+});
+
 /**
- * TradingView-grade candlestick chart with dealer-structure overlays.
- * Smoothness contract: the chart is created exactly once; ticks arrive as
- * series.update() on the last bar; full setData + fitContent only on ticker
- * change. Pan/zoom is never fought — no per-tick fitContent.
+ * TradingView-grade candlestick chart with dealer-structure overlays and the
+ * net-GEX node heatmap. Smoothness contract: created once; ticks arrive as
+ * series.update() on the last (current-bucket) bar; full setData + fitContent
+ * only on ticker/timeframe change. Pan/zoom is never fought.
  */
-const StrikeChart = ({ ticker, revision, levels, nodes, nodesMaxAbs, overlay, height = 460 }: StrikeChartProps) => {
+const StrikeChart = ({ ticker, revision, levels, overlay, timeframe, height = 460 }: StrikeChartProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const nodesRef = useRef<GexNodesPrimitive | null>(null);
   const levelLinesRef = useRef<IPriceLine[]>([]);
-  const nodeLinesRef = useRef<IPriceLine[]>([]);
-  const loadedRef = useRef<{ ticker: string; length: number }>({ ticker: '', length: 0 });
+  const levelsRef = useRef<KeyLevels>(levels);
+  const loadedRef = useRef<{ ticker: string; timeframe: Timeframe }>({ ticker: '', timeframe: '1m' });
 
-  /** Recenter after the user gets lost panning/zooming: re-enable autoscale + fit data. */
+  // Keep the autoscale provider reading the freshest levels without re-mounting
+  levelsRef.current = levels;
+
   const resetView = useCallback(() => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -69,13 +87,7 @@ const StrikeChart = ({ ticker, revision, levels, nodes, nodesMaxAbs, overlay, he
         horzLines: { color: 'rgba(255,255,255,0.03)' },
       },
       rightPriceScale: { borderColor: '#1c1c1c' },
-      timeScale: {
-        borderColor: '#1c1c1c',
-        timeVisible: true,
-        secondsVisible: false,
-        rightOffset: 6,
-        barSpacing: 7,
-      },
+      timeScale: { borderColor: '#1c1c1c', timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: 7 },
       crosshair: {
         vertLine: { color: 'rgba(255,255,255,0.3)', labelBackgroundColor: '#262626' },
         horzLine: { color: 'rgba(255,255,255,0.3)', labelBackgroundColor: '#262626' },
@@ -92,6 +104,21 @@ const StrikeChart = ({ ticker, revision, levels, nodes, nodesMaxAbs, overlay, he
       priceLineVisible: true,
       priceLineColor: 'rgba(237,237,237,0.4)',
       priceLineStyle: LineStyle.Dotted,
+      // Widen the visible price range to always include the walls/king so several
+      // strike-node bands are on screen, not just the couple around spot.
+      autoscaleInfoProvider: (original: () => { priceRange: { minValue: number; maxValue: number } } | null) => {
+        const base = original();
+        const lv = levelsRef.current;
+        const extras = [lv.putWall, lv.callWall, lv.king, lv.spot].filter(v => Number.isFinite(v));
+        let min = base?.priceRange.minValue ?? Math.min(...extras);
+        let max = base?.priceRange.maxValue ?? Math.max(...extras);
+        for (const v of extras) {
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+        const pad = Math.max((max - min) * 0.08, 0.01);
+        return { priceRange: { minValue: min - pad, maxValue: max + pad } };
+      },
     });
 
     const volume = chart.addSeries(HistogramSeries, {
@@ -102,76 +129,68 @@ const StrikeChart = ({ ticker, revision, levels, nodes, nodesMaxAbs, overlay, he
     });
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
 
+    const nodes = new GexNodesPrimitive();
+    candles.attachPrimitive(nodes);
+
     chartRef.current = chart;
     candleSeriesRef.current = candles;
     volumeSeriesRef.current = volume;
+    nodesRef.current = nodes;
 
     return () => {
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
       volumeSeriesRef.current = null;
+      nodesRef.current = null;
       levelLinesRef.current = [];
-      nodeLinesRef.current = [];
-      loadedRef.current = { ticker: '', length: 0 };
+      loadedRef.current = { ticker: '', timeframe: '1m' };
     };
   }, []);
 
-  // Candle data: full load on ticker change, incremental update per tick
+  // Candle data + node overlay: full load on ticker/timeframe change, incremental per tick
   useEffect(() => {
     const chart = chartRef.current;
     const candleSeries = candleSeriesRef.current;
     const volumeSeries = volumeSeriesRef.current;
-    if (!chart || !candleSeries || !volumeSeries) return;
+    const nodes = nodesRef.current;
+    if (!chart || !candleSeries || !volumeSeries || !nodes) return;
 
-    const bars = Simulator.getCandles(ticker);
-    if (!bars || bars.length === 0) return;
+    const base = Simulator.getCandles(ticker);
+    const baseGex = Simulator.getGexHistory(ticker);
+    if (!base || base.length === 0) return;
 
-    const toCandle = (b: (typeof bars)[number]) => ({
-      time: b.time as UTCTimestamp,
-      open: b.open,
-      high: b.high,
-      low: b.low,
-      close: b.close,
-    });
-    const toVolume = (b: (typeof bars)[number]) => ({
-      time: b.time as UTCTimestamp,
-      value: b.volume,
-      color: b.close >= b.open ? 'rgba(16,185,129,0.28)' : 'rgba(244,63,94,0.28)',
-    });
+    const mins = tfMinutes(timeframe);
+    const bars = aggregateCandles(base, mins);
+    const snaps = aggregateSnapshots(baseGex ?? [], mins);
+    const maxAbs = snapshotsMaxAbs(snaps);
 
     const loaded = loadedRef.current;
-    const tickerChanged = loaded.ticker !== ticker;
-    const rolled = Math.abs(bars.length - loaded.length) > 1; // shift/seed happened
+    const changed = loaded.ticker !== ticker || loaded.timeframe !== timeframe;
 
-    if (tickerChanged || rolled) {
+    if (changed) {
       candleSeries.setData(bars.map(toCandle));
       volumeSeries.setData(bars.map(toVolume));
-      if (tickerChanged) chart.timeScale().fitContent();
-      loadedRef.current = { ticker, length: bars.length };
+      chart.timeScale().fitContent();
+      loadedRef.current = { ticker, timeframe };
     } else {
-      // Incremental: update the live bar (also handles a single new bar roll)
       const last = bars[bars.length - 1];
       candleSeries.update(toCandle(last));
       volumeSeries.update(toVolume(last));
-      loaded.length = bars.length;
     }
-  }, [ticker, revision]);
 
-  // Overlay lines: key levels + exposure nodes
+    const showNodes = overlay === 'NODES' || overlay === 'BOTH';
+    nodes.setData(snaps, maxAbs, showNodes);
+  }, [ticker, revision, timeframe, overlay]);
+
+  // Key-level price lines
   useEffect(() => {
     const candleSeries = candleSeriesRef.current;
     if (!candleSeries) return;
-
     for (const line of levelLinesRef.current) candleSeries.removePriceLine(line);
-    for (const line of nodeLinesRef.current) candleSeries.removePriceLine(line);
     levelLinesRef.current = [];
-    nodeLinesRef.current = [];
 
-    const showLevels = overlay === 'LEVELS' || overlay === 'BOTH';
-    const showNodes = overlay === 'NODES' || overlay === 'BOTH';
-
-    if (showLevels) {
+    if (overlay === 'LEVELS' || overlay === 'BOTH') {
       const mk = (price: number, color: string, title: string, style: LineStyle, width: 1 | 2 = 1) =>
         candleSeries.createPriceLine({ price, color, title, lineStyle: style, lineWidth: width, axisLabelVisible: true });
       levelLinesRef.current = [
@@ -181,35 +200,18 @@ const StrikeChart = ({ ticker, revision, levels, nodes, nodesMaxAbs, overlay, he
         mk(levels.king, '#eab308', 'KING', LineStyle.Solid, 2),
       ];
     }
-
-    if (showNodes) {
-      nodeLinesRef.current = nodes.map(node => {
-        const intensity = 0.12 + 0.45 * (Math.abs(node.value) / nodesMaxAbs);
-        const color =
-          node.value >= 0 ? `rgba(16,185,129,${intensity.toFixed(2)})` : `rgba(244,63,94,${intensity.toFixed(2)})`;
-        return candleSeries.createPriceLine({
-          price: node.strike,
-          color,
-          title: '',
-          lineStyle: LineStyle.Dotted,
-          lineWidth: 1,
-          axisLabelVisible: false,
-        });
-      });
-    }
-  }, [levels, nodes, nodesMaxAbs, overlay]);
+  }, [levels, overlay]);
 
   return (
     <div className="flex flex-col gap-2 h-full">
-      {/* Legend — identity never rides on color alone */}
       <div className="flex items-center gap-3.5 px-1 flex-wrap select-none">
         {[
           { label: 'Call Wall', cls: 'bg-bull' },
           { label: 'Put Wall', cls: 'bg-bear' },
           { label: 'Flip', cls: 'bg-warn' },
           { label: 'King', cls: 'bg-[#eab308]' },
-          { label: '+GEX node', cls: 'bg-bull/40' },
-          { label: '−GEX node', cls: 'bg-bear/40' },
+          { label: '+GEX node', cls: 'bg-[#388CD2]' },
+          { label: '−GEX node', cls: 'bg-[#D68A32]' },
         ].map(item => (
           <span key={item.label} className="flex items-center gap-1.5 font-mono text-[10px] text-textSecondary">
             <span className={`inline-block w-3 h-0.5 rounded-full ${item.cls}`} />
@@ -217,7 +219,7 @@ const StrikeChart = ({ ticker, revision, levels, nodes, nodesMaxAbs, overlay, he
           </span>
         ))}
         <span className="ml-auto font-mono text-[10px] text-textMuted uppercase tracking-wider">
-          scroll to zoom · drag to pan · double-click to reset
+          scroll zoom · drag pan · dbl-click reset
         </span>
         <button
           onClick={resetView}

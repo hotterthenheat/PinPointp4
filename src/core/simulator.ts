@@ -7,6 +7,7 @@
 
 import type {
   Candle,
+  GexSnapshot,
   Greeks,
   Indicators,
   MarketSnapshot,
@@ -93,6 +94,9 @@ const Simulator = (() => {
   const TICKS_PER_BAR = 4; // each simulated bar aggregates 4 ticks
   const BAR_SECONDS = 60; // bars are labeled 1 minute apart
 
+  // Net-GEX-per-strike snapshots, one per bar, parallel to candleHistory
+  const gexHistory: Record<string, GexSnapshot[]> = {};
+
   function symbolHash(sym: string): number {
     let h = 2166136261;
     for (let i = 0; i < sym.length; i++) {
@@ -143,6 +147,15 @@ const Simulator = (() => {
 
     candleHistory[sym] = bars;
     candleTickCount[sym] = 0;
+
+    // Seed a parallel GEX snapshot per bar so the on-chart node overlay has history
+    gexHistory[sym] = bars.map(b => computeGexSnapshot(sym, b.close, b.time));
+  }
+
+  // Net GEX (all-expiry proxy) per strike at a given price, captured as one snapshot
+  function computeGexSnapshot(sym: string, spot: number, time: number): GexSnapshot {
+    const chain = generateOptionsChain(sym, spot);
+    return { time, levels: chain.map(n => ({ strike: n.strike, value: n.netGex })) };
   }
 
   // Fold the latest tick into the current bar; roll a new bar every TICKS_PER_BAR ticks
@@ -152,10 +165,12 @@ const Simulator = (() => {
     const price = TICKERS[sym].currentPrice;
     const count = (candleTickCount[sym] = (candleTickCount[sym] ?? 0) + 1);
     const last = bars[bars.length - 1];
+    const gh = gexHistory[sym];
 
     if (count % TICKS_PER_BAR === 0) {
+      const time = last.time + BAR_SECONDS;
       bars.push({
-        time: last.time + BAR_SECONDS,
+        time,
         open: last.close,
         high: Math.max(last.close, price),
         low: Math.min(last.close, price),
@@ -163,11 +178,21 @@ const Simulator = (() => {
         volume: Math.round(1500 + Math.random() * 9000),
       });
       if (bars.length > CANDLE_LIMIT) bars.shift();
+
+      if (gh) {
+        gh.push(computeGexSnapshot(sym, price, time));
+        if (gh.length > CANDLE_LIMIT) gh.shift();
+      }
     } else {
       last.close = price;
       last.high = Math.max(last.high, price);
       last.low = Math.min(last.low, price);
       last.volume += Math.round(500 + Math.random() * 4000);
+
+      // Keep the forming bar's node snapshot live — only for the visible (active) ticker
+      if (gh && gh.length && sym === activeTicker) {
+        gh[gh.length - 1] = computeGexSnapshot(sym, price, gh[gh.length - 1].time);
+      }
     }
   }
 
@@ -242,9 +267,9 @@ const Simulator = (() => {
   }
 
   // Generate Strike-by-Strike Chain
-  function generateOptionsChain(tickerKey: TickerSymbol): StrikeNode[] {
+  function generateOptionsChain(tickerKey: TickerSymbol, spotOverride?: number): StrikeNode[] {
     const config = TICKERS[tickerKey];
-    const spot = config.currentPrice;
+    const spot = spotOverride ?? config.currentPrice;
     const step = config.step;
     const iv = config.iv;
 
@@ -454,6 +479,11 @@ const Simulator = (() => {
     getCandles: (sym: string): Candle[] => {
       const key = ensureTicker(sym);
       return candleHistory[key];
+    },
+    /** Net-GEX-per-strike snapshots parallel to the candle series (read-only). */
+    getGexHistory: (sym: string): GexSnapshot[] => {
+      const key = ensureTicker(sym);
+      return gexHistory[key];
     },
     tick,
     getGreeks: calculateGreeks
