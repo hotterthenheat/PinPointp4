@@ -16,10 +16,10 @@ import type { CSSProperties } from 'react';
 
   Flip HEAT_MODE to switch instantly.
 */
-export type HeatMode = 'thermal' | 'teal-violet' | 'gold-slate' | 'hybrid' | 'mono' | 'diverging';
+export type HeatMode = 'redwood' | 'thermal' | 'teal-violet' | 'gold-slate' | 'hybrid' | 'mono' | 'diverging';
 
 // `as HeatMode` stops TS from narrowing to the literal so the other branches stay legal.
-export const HEAT_MODE = 'thermal' as HeatMode;
+export const HEAT_MODE = 'redwood' as HeatMode;
 
 type RGB = [number, number, number];
 type Stops = [number, RGB][];
@@ -33,7 +33,24 @@ interface RampPalette {
 }
 
 // Ramps run from neutral (t=0) → extreme (t=1)
-const RAMPS: Record<'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
+const RAMPS: Record<'redwood' | 'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
+  // Cool Blue / Light Grayish (+) ↔ Redwood / Burnt Umber (−), gray neutral
+  redwood: {
+    pos: [
+      [0.0, NEUTRAL],
+      [0.42, [17, 48, 71]], //  #113047 cool blue
+      [0.72, [115, 154, 185]], // #739ab9 light grayish blue
+      [1.0, [168, 197, 218]], //  brighter steel
+    ],
+    neg: [
+      [0.0, NEUTRAL],
+      [0.42, [109, 18, 11]], //  #6d120b burnt umber
+      [0.72, [176, 42, 41]], //  #b02a29 redwood
+      [1.0, [214, 82, 76]], //   brighter red
+    ],
+    gradient:
+      'linear-gradient(to bottom, #A8C5DA 0%, #739ab9 20%, #113047 40%, #2a2a2a 50%, #6d120b 64%, #b02a29 82%, #D6524C 100%)',
+  },
   thermal: {
     pos: [
       [0.0, NEUTRAL],
