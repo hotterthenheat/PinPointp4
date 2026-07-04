@@ -92,7 +92,7 @@ const TickerSearch = ({ value, onChange, align = 'right' }: TickerSearchProps) =
               className="w-full bg-transparent py-2.5 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none"
             />
           </div>
-          <div className="max-h-72 overflow-y-auto py-1">
+          <div className="max-h-44 overflow-y-auto py-1">
             {!mod ? (
               <div className="px-3 py-6 text-center font-mono text-[11px] text-textMuted">Loading tickers…</div>
             ) : results.length === 0 ? (
