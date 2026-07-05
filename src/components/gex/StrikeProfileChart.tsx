@@ -59,8 +59,8 @@ const StrikeProfileChart = ({ rows, maxAbs, metricLabel, selectedStrike, onSelec
             <button
               key={row.strike}
               onClick={() => onSelect(row.strike)}
-              onMouseEnter={e => setHover({ row, x: e.clientX, y: e.clientY })}
-              onMouseMove={e => setHover({ row, x: e.clientX, y: e.clientY })}
+              onMouseEnter={e => setHover({ row, x: e.clientX, y: e.clientY, side: pos ? 'right' : 'left' })}
+              onMouseMove={e => setHover({ row, x: e.clientX, y: e.clientY, side: pos ? 'right' : 'left' })}
               className={`w-full flex items-stretch border-b border-borderSubtle/30 text-left transition-colors hover:bg-white/[0.02] ${
                 selected
                   ? 'bg-select/[0.06] shadow-[inset_2px_0_0_0_rgba(56,189,248,0.75)]'

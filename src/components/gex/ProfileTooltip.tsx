@@ -5,6 +5,8 @@ export interface ProfileHover {
   row: ProfileRow;
   x: number;
   y: number;
+  /** Which side of the cursor to place the card on */
+  side: 'left' | 'right';
 }
 
 const fmtOI = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0));
@@ -26,11 +28,17 @@ interface ProfileTooltipProps {
 
 /** Floating info card for a hovered strike — follows the cursor. */
 const ProfileTooltip = ({ hover, metricLabel }: ProfileTooltipProps) => {
-  const { row, x, y } = hover;
+  const { row, x, y, side } = hover;
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const left = Math.min(x + 16, vw - 236);
-  const top = Math.min(y + 16, vh - 176);
+  const W = 216;
+  const H = 210;
+  const OFFSET = 12;
+  // Hug the cursor; put-dominant rows open to the left, call-dominant to the right
+  let left = side === 'right' ? x + OFFSET : x - W - OFFSET;
+  left = Math.max(8, Math.min(left, vw - W - 8));
+  let top = y + OFFSET;
+  if (top + H > vh) top = Math.max(8, y - H - OFFSET);
   const tags = rowTags(row);
   const callHeavy = Math.abs(row.call) >= Math.abs(row.put);
 

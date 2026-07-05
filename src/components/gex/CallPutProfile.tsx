@@ -47,12 +47,13 @@ const CallPutProfile = ({ rows, maxAbs, metricLabel, selectedStrike, onSelect }:
           const callPct = Math.min(1, Math.abs(row.call) / maxAbs) * 50;
           const putPct = Math.min(1, Math.abs(row.put) / maxAbs) * 50;
           const selected = row.strike === selectedStrike;
+          const side = Math.abs(row.call) >= Math.abs(row.put) ? 'right' : 'left';
           return (
             <button
               key={row.strike}
               onClick={() => onSelect(row.strike)}
-              onMouseEnter={e => setHover({ row, x: e.clientX, y: e.clientY })}
-              onMouseMove={e => setHover({ row, x: e.clientX, y: e.clientY })}
+              onMouseEnter={e => setHover({ row, x: e.clientX, y: e.clientY, side })}
+              onMouseMove={e => setHover({ row, x: e.clientX, y: e.clientY, side })}
               className={`w-full flex items-stretch border-b border-borderSubtle/30 text-left transition-colors hover:bg-white/[0.02] ${
                 selected
                   ? 'bg-select/[0.06] shadow-[inset_2px_0_0_0_rgba(56,189,248,0.75)]'
