@@ -1,10 +1,12 @@
-import { fmtUsd } from '../../data/gex';
+import { useState } from 'react';
 import { heatRgb } from './heatmap';
+import ProfileTooltip, { type ProfileHover } from './ProfileTooltip';
 import type { ProfileRow } from '../../types/gex';
 
 interface CallPutProfileProps {
   rows: ProfileRow[];
   maxAbs: number;
+  metricLabel: string;
   selectedStrike: number | null;
   onSelect: (strike: number) => void;
 }
@@ -19,12 +21,14 @@ const rgb = (v: number, max: number) => {
  * to the right. Colors follow the section's polarity ramp (call ≈ +, put ≈ −);
  * side + labels carry identity so it never relies on hue alone.
  */
-const CallPutProfile = ({ rows, maxAbs, selectedStrike, onSelect }: CallPutProfileProps) => {
+const CallPutProfile = ({ rows, maxAbs, metricLabel, selectedStrike, onSelect }: CallPutProfileProps) => {
+  const [hover, setHover] = useState<ProfileHover | null>(null);
+
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Legend */}
-      <div className="flex items-center h-6 shrink-0 border-b border-borderSubtle select-none px-2 font-mono text-[9px] uppercase tracking-wider">
-        <span className="w-[50px] shrink-0" />
+    <div className="flex flex-col h-full min-h-0" onMouseLeave={() => setHover(null)}>
+      {/* Legend — geometry mirrors the rows */}
+      <div className="flex items-stretch h-6 shrink-0 border-b border-borderSubtle select-none font-mono text-[9px] uppercase tracking-wider">
+        <span className="w-[50px] shrink-0 bg-[#0c0c0c] border-r border-borderSubtle" />
         <span className="flex-grow flex items-center justify-between">
           <span className="flex items-center gap-1 text-textMuted">
             <span className="inline-block w-2 h-2 rounded-[2px]" style={{ backgroundColor: rgb(-maxAbs, maxAbs) }} />
@@ -47,7 +51,8 @@ const CallPutProfile = ({ rows, maxAbs, selectedStrike, onSelect }: CallPutProfi
             <button
               key={row.strike}
               onClick={() => onSelect(row.strike)}
-              title={`${row.strike} · call ${fmtUsd(row.call)} · put ${fmtUsd(row.put)}`}
+              onMouseEnter={e => setHover({ row, x: e.clientX, y: e.clientY })}
+              onMouseMove={e => setHover({ row, x: e.clientX, y: e.clientY })}
               className={`w-full flex items-stretch border-b border-borderSubtle/30 text-left transition-colors hover:bg-white/[0.02] ${
                 selected
                   ? 'bg-select/[0.06] shadow-[inset_2px_0_0_0_rgba(56,189,248,0.75)]'
@@ -81,6 +86,8 @@ const CallPutProfile = ({ rows, maxAbs, selectedStrike, onSelect }: CallPutProfi
           );
         })}
       </div>
+
+      {hover && <ProfileTooltip hover={hover} metricLabel={metricLabel} />}
     </div>
   );
 };

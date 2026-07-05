@@ -139,7 +139,7 @@ const StrikeProfile = () => {
           className="xl:col-span-5 w-full"
           bodyClassName="h-[540px] p-2"
         >
-          <CallPutProfile rows={rows} maxAbs={splitMaxAbs} selectedStrike={selectedStrike} onSelect={select} />
+          <CallPutProfile rows={rows} maxAbs={splitMaxAbs} metricLabel={metric} selectedStrike={selectedStrike} onSelect={select} />
         </Panel>
       </div>
 

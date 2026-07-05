@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { fmtUsd } from '../../data/gex';
 import { heatRgb } from './heatmap';
+import ProfileTooltip, { type ProfileHover } from './ProfileTooltip';
 import type { ProfileRow } from '../../types/gex';
 
 interface StrikeProfileChartProps {
@@ -22,23 +24,25 @@ const rgb = (v: number, max: number) => {
  * polarity encoding as the rest of the GEX section; key levels are tagged.
  */
 const StrikeProfileChart = ({ rows, maxAbs, metricLabel, selectedStrike, onSelect }: StrikeProfileChartProps) => {
+  const [hover, setHover] = useState<ProfileHover | null>(null);
+
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Pole header */}
-      <div className="flex items-center h-6 shrink-0 border-b border-borderSubtle select-none">
-        <span className="w-[58px] shrink-0" />
-        <div className="relative flex-grow px-2">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[9px] uppercase tracking-wider text-textMuted">
+    <div className="flex flex-col h-full min-h-0" onMouseLeave={() => setHover(null)}>
+      {/* Pole header — geometry mirrors the rows so 0 sits on the zero line */}
+      <div className="flex items-stretch h-6 shrink-0 border-b border-borderSubtle select-none">
+        <span className="w-[58px] shrink-0 bg-[#0c0c0c] border-r border-borderSubtle" />
+        <span className="relative flex-grow">
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 font-mono text-[9px] uppercase tracking-wider text-textMuted">
             − {metricLabel}
           </span>
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-[8px] text-textMuted">
+          <span className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 font-mono text-[8px] text-textMuted">
             0
           </span>
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[9px] uppercase tracking-wider text-textMuted">
+          <span className="absolute right-0 top-1/2 -translate-y-1/2 font-mono text-[9px] uppercase tracking-wider text-textMuted">
             {metricLabel} +
           </span>
-        </div>
-        <span className="w-[64px] shrink-0 text-right pr-2 font-mono text-[9px] uppercase tracking-wider text-textMuted">
+        </span>
+        <span className="w-[64px] shrink-0 flex items-center justify-end pr-2 font-mono text-[9px] uppercase tracking-wider text-textMuted">
           net
         </span>
       </div>
@@ -55,7 +59,8 @@ const StrikeProfileChart = ({ rows, maxAbs, metricLabel, selectedStrike, onSelec
             <button
               key={row.strike}
               onClick={() => onSelect(row.strike)}
-              title={`${row.strike} · net ${fmtUsd(row.net)} · call ${fmtUsd(row.call)} · put ${fmtUsd(row.put)}`}
+              onMouseEnter={e => setHover({ row, x: e.clientX, y: e.clientY })}
+              onMouseMove={e => setHover({ row, x: e.clientX, y: e.clientY })}
               className={`w-full flex items-stretch border-b border-borderSubtle/30 text-left transition-colors hover:bg-white/[0.02] ${
                 selected
                   ? 'bg-select/[0.06] shadow-[inset_2px_0_0_0_rgba(56,189,248,0.75)]'
@@ -103,6 +108,8 @@ const StrikeProfileChart = ({ rows, maxAbs, metricLabel, selectedStrike, onSelec
           );
         })}
       </div>
+
+      {hover && <ProfileTooltip hover={hover} metricLabel={metricLabel} />}
     </div>
   );
 };

@@ -67,14 +67,14 @@ const DataTable = <T,>({
     <div className="overflow-auto" style={maxHeight ? { maxHeight } : undefined}>
       <table className="w-full border-collapse">
         <thead className="sticky top-0 z-10">
-          <tr className="bg-[#0c0c0c] border-b border-borderSubtle">
+          <tr className="bg-[#0c0c0c]">
             {columns.map(col => (
               <th
                 key={col.key}
                 style={col.width ? { width: col.width } : undefined}
                 className={`px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-textSecondary whitespace-nowrap ${
                   col.align === 'right' ? 'text-right' : 'text-left'
-                } ${col.accent ? accentBorder[col.accent] : ''} ${
+                } ${col.accent ? accentBorder[col.accent] : 'border-b-2 border-borderSubtle'} ${
                   col.sortValue ? 'cursor-pointer select-none hover:text-textPrimary' : ''
                 }`}
                 onClick={() => toggleSort(col)}
