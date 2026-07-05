@@ -7,10 +7,12 @@ type TickerModule = typeof import('../../data/tickers');
 interface TickerSearchProps {
   value: string;
   onChange: (symbol: string) => void;
+  /** Which edge the dropdown anchors to (default 'right' to hug the page header) */
+  align?: 'left' | 'right';
 }
 
 /** Compact searchable ticker menu — filters the full NASDAQ universe (lazy-loaded). */
-const TickerSearch = ({ value, onChange }: TickerSearchProps) => {
+const TickerSearch = ({ value, onChange, align = 'right' }: TickerSearchProps) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlight, setHighlight] = useState(0);
@@ -77,7 +79,7 @@ const TickerSearch = ({ value, onChange }: TickerSearchProps) => {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1.5 z-40 w-72 border border-borderMuted bg-panel rounded-lg shadow-2xl shadow-black overflow-hidden animate-slide-in"
+          className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full mt-1.5 z-50 w-72 max-w-[80vw] border border-borderMuted bg-panel rounded-lg shadow-2xl shadow-black overflow-hidden animate-slide-in`}
           onKeyDown={onKeyDown}
         >
           <div className="flex items-center gap-2 px-3 border-b border-borderSubtle">
@@ -90,7 +92,7 @@ const TickerSearch = ({ value, onChange }: TickerSearchProps) => {
               className="w-full bg-transparent py-2.5 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none"
             />
           </div>
-          <div className="max-h-72 overflow-y-auto py-1">
+          <div className="max-h-44 overflow-y-auto py-1">
             {!mod ? (
               <div className="px-3 py-6 text-center font-mono text-[11px] text-textMuted">Loading tickers…</div>
             ) : results.length === 0 ? (

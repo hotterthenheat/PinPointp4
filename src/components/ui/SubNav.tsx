@@ -26,7 +26,7 @@ const SubNav = ({ items, ariaLabel }: SubNavProps) => {
               i > 0 ? 'border-l border-borderSubtle' : ''
             } ${
               isActive
-                ? 'bg-select/[0.08] text-select'
+                ? 'bg-white text-black'
                 : 'text-textSecondary hover:text-textPrimary hover:bg-white/[0.03]'
             }`
           }

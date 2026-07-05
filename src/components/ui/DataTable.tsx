@@ -6,10 +6,17 @@ export interface Column<T> {
   header: string;
   align?: 'left' | 'right';
   width?: string;
+  /** Directional accent under the header cell (call = bull, put = bear) */
+  accent?: 'bull' | 'bear';
   /** Provide to make the column sortable */
   sortValue?: (row: T) => number | string;
   render: (row: T) => React.ReactNode;
 }
+
+const accentBorder: Record<'bull' | 'bear', string> = {
+  bull: 'border-b-2 border-bull/45',
+  bear: 'border-b-2 border-bear/45',
+};
 
 interface DataTableProps<T> {
   columns: Column<T>[];
@@ -60,14 +67,16 @@ const DataTable = <T,>({
     <div className="overflow-auto" style={maxHeight ? { maxHeight } : undefined}>
       <table className="w-full border-collapse">
         <thead className="sticky top-0 z-10">
-          <tr className="bg-[#0c0c0c] border-b border-borderSubtle">
+          <tr className="bg-[#0c0c0c]">
             {columns.map(col => (
               <th
                 key={col.key}
                 style={col.width ? { width: col.width } : undefined}
-                className={`px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-textMuted whitespace-nowrap ${
+                className={`px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-textSecondary whitespace-nowrap ${
                   col.align === 'right' ? 'text-right' : 'text-left'
-                } ${col.sortValue ? 'cursor-pointer select-none hover:text-textSecondary' : ''}`}
+                } ${col.accent ? accentBorder[col.accent] : 'border-b-2 border-borderSubtle'} ${
+                  col.sortValue ? 'cursor-pointer select-none hover:text-textPrimary' : ''
+                }`}
                 onClick={() => toggleSort(col)}
               >
                 <span className="inline-flex items-center gap-1">

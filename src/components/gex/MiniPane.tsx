@@ -11,6 +11,7 @@ import {
 } from 'lightweight-charts';
 import Simulator from '../../core/simulator';
 import { candleTheme } from './candleTheme';
+import TickerSearch from '../ui/TickerSearch';
 import type { DarkPoolPrint } from '../../types/gex';
 
 interface MiniPaneProps {
@@ -20,6 +21,8 @@ interface MiniPaneProps {
   prints: DarkPoolPrint[];
   /** Bumped every simulator tick */
   revision: number;
+  /** Change which ticker this pane shows */
+  onTickerChange: (symbol: string) => void;
 }
 
 const UP = candleTheme.up;
@@ -27,7 +30,7 @@ const DOWN = candleTheme.down;
 const DP = '#a78bfa';
 
 /** Compact candlestick pane with dark-pool print levels. Same smoothness contract as StrikeChart. */
-const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPaneProps) => {
+const MiniPane = ({ ticker, spot, changePercent, prints, revision, onTickerChange }: MiniPaneProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -157,9 +160,9 @@ const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPanePro
   const up = changePercent >= 0;
 
   return (
-    <div className="border border-borderSubtle bg-panel rounded-md overflow-hidden flex flex-col">
-      <div className="flex items-center gap-2 px-2.5 h-8 border-b border-borderSubtle shrink-0 select-none">
-        <span className="font-mono text-[11px] font-bold text-textPrimary">{ticker}</span>
+    <div className="border border-borderSubtle bg-panel rounded-md flex flex-col">
+      <div className="flex items-center gap-2 px-2 h-10 border-b border-borderSubtle shrink-0 select-none relative z-20">
+        <TickerSearch value={ticker} onChange={onTickerChange} align="left" />
         <span className="font-mono text-[11px] font-semibold text-textPrimary tnum">${spot.toFixed(2)}</span>
         <span className={`font-mono text-[10px] tnum ${up ? 'text-bull' : 'text-bear'}`}>
           {up ? '+' : ''}
@@ -169,7 +172,7 @@ const MiniPane = ({ ticker, spot, changePercent, prints, revision }: MiniPanePro
           <span className="inline-block w-3 h-0.5 rounded-full bg-[#a78bfa]" /> dark pool
         </span>
       </div>
-      <div className="relative h-[248px]" onDoubleClick={resetView} title="Double-click to reset view">
+      <div className="relative h-[248px] overflow-hidden rounded-b-md" onDoubleClick={resetView} title="Double-click to reset view">
         <div ref={containerRef} className="absolute inset-0" />
       </div>
     </div>

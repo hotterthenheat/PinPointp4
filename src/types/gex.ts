@@ -74,5 +74,37 @@ export interface GexView {
   nodes: NodeLevel[];
   nodesMaxAbs: number;
   matrix: GexMatrixData;
-  board: BoardTicker[];
+}
+
+/** One strike row of the Strike Profile — net exposure plus its call/put split. */
+export interface ProfileRow {
+  strike: number;
+  /** Signed net metric ($) */
+  net: number;
+  /** Call-side component ($, typically positive) */
+  call: number;
+  /** Put-side component ($, typically negative) */
+  put: number;
+  callOI: number;
+  putOI: number;
+  isSpot: boolean;
+  isCallWall: boolean;
+  isPutWall: boolean;
+  isFlip: boolean;
+  isKing: boolean;
+}
+
+export interface StrikeProfileData {
+  /** Descending strike order (high strike first) */
+  rows: ProfileRow[];
+  /** Max |net| across rows — normalizes the diverging profile */
+  netMaxAbs: number;
+  /** Max of |call| and |put| across rows — normalizes the split */
+  splitMaxAbs: number;
+  /** Σ|call| and Σ|put| for the skew readout */
+  totalCall: number;
+  totalPut: number;
+  /** Σ net across the window */
+  netSum: number;
+  levels: KeyLevels;
 }

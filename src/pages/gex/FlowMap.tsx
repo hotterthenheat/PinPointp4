@@ -1,9 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMarketData } from '../../context/MarketDataContext';
-import { buildGexView, fmtUsd } from '../../data/gex';
+import { buildGexView, buildBoard } from '../../data/gex';
+import Simulator from '../../core/simulator';
 import SegmentedControl from '../../components/ui/SegmentedControl';
-import MetricGrid from '../../components/ui/MetricGrid';
-import StatCard from '../../components/ui/StatCard';
 import Panel from '../../components/ui/Panel';
 import StrikeChart from '../../components/gex/StrikeChart';
 import GexMatrix from '../../components/gex/GexMatrix';
@@ -37,6 +36,7 @@ const FlowMap = () => {
   const [overlay, setOverlay] = useState<OverlayMode>('BOTH');
   const [rangeKey, setRangeKey] = useState<'10' | '20'>('10');
   const [timeframe, setTimeframe] = useState<Timeframe>('1m');
+  const [boardTickers, setBoardTickers] = useState<string[]>(() => [...Simulator.WATCHLIST]);
 
   const revRef = useRef(0);
   const revision = useMemo(() => ++revRef.current, [marketData]);
@@ -45,6 +45,11 @@ const FlowMap = () => {
     () => (marketData ? buildGexView(marketData, metric, Number(rangeKey) as StrikeRange) : null),
     [marketData, metric, rangeKey]
   );
+
+  const board = useMemo(() => buildBoard(boardTickers), [boardTickers, marketData]);
+
+  const setBoardTicker = (index: number, symbol: string) =>
+    setBoardTickers(prev => prev.map((t, i) => (i === index ? symbol.toUpperCase() : t)));
 
   if (!view || !marketData) {
     return (
@@ -56,14 +61,12 @@ const FlowMap = () => {
     );
   }
 
-  const { levels, matrix, board } = view;
-  const netGex = marketData.chain.reduce((a, n) => a + n.netGex, 0);
+  const { levels, matrix } = view;
 
   return (
     <>
-      {/* Controls */}
+      {/* Section controls (metric / overlay / range affect chart + matrix) */}
       <div className="flex items-center gap-3 flex-wrap">
-        <SegmentedControl ariaLabel="Timeframe" options={TIMEFRAME_OPTIONS} value={timeframe} onChange={setTimeframe} />
         <SegmentedControl ariaLabel="Metric" options={METRIC_OPTIONS} value={metric} onChange={setMetric} />
         <SegmentedControl ariaLabel="Overlay" options={OVERLAY_OPTIONS} value={overlay} onChange={setOverlay} />
         <SegmentedControl ariaLabel="Strike range" options={RANGE_OPTIONS} value={rangeKey} onChange={setRangeKey} />
@@ -72,25 +75,6 @@ const FlowMap = () => {
         </span>
       </div>
 
-      {/* Key level stats */}
-      <MetricGrid min="140px">
-        <StatCard label="Spot" value={`$${levels.spot.toFixed(2)}`} sub="live tick" />
-        <StatCard label="King" value={`$${levels.king.toFixed(2)}`} tone="warn" sub="max |exposure| strike" />
-        <StatCard label="Call Wall" value={`$${levels.callWall.toFixed(2)}`} tone="bull" sub="dealer supply" />
-        <StatCard label="Put Wall" value={`$${levels.putWall.toFixed(2)}`} tone="bear" sub="dealer support" />
-        <StatCard
-          label="Gamma Flip"
-          value={`$${levels.flip.toFixed(2)}`}
-          sub={levels.spot > levels.flip ? 'spot above — stabilizing' : 'spot below — accelerating'}
-        />
-        <StatCard
-          label="Net GEX"
-          value={fmtUsd(netGex)}
-          tone={netGex >= 0 ? 'bull' : 'bear'}
-          sub="book total"
-        />
-      </MetricGrid>
-
       {/* Product 1: strike chart + strike×expiry matrix */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
         <Panel
@@ -98,6 +82,14 @@ const FlowMap = () => {
           subtitle="live tick feed"
           className="xl:col-span-7 w-full"
           bodyClassName="flex flex-col"
+          actions={
+            <SegmentedControl
+              ariaLabel="Timeframe"
+              options={TIMEFRAME_OPTIONS}
+              value={timeframe}
+              onChange={setTimeframe}
+            />
+          }
         >
           <StrikeChart
             ticker={activeTicker}
@@ -130,20 +122,21 @@ const FlowMap = () => {
       >
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-stretch">
           <div className="xl:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
-            {board.map(item => (
+            {board.map((item, i) => (
               <MiniPane
-                key={item.ticker}
+                key={i}
                 ticker={item.ticker}
                 spot={item.spot}
                 changePercent={item.changePercent}
                 prints={item.prints}
                 revision={revision}
+                onTickerChange={sym => setBoardTicker(i, sym)}
               />
             ))}
           </div>
           <div className="xl:col-span-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-            {board.map(item => (
-              <StrikeLadder key={item.ticker} board={item} />
+            {board.map((item, i) => (
+              <StrikeLadder key={i} board={item} />
             ))}
           </div>
         </div>
