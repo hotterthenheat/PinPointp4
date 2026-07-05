@@ -23,6 +23,7 @@ export type HeatMode =
   | 'thermal'
   | 'teal-violet'
   | 'gold-slate'
+  | 'emerald-rose'
   | 'hybrid'
   | 'mono'
   | 'diverging';
@@ -42,7 +43,7 @@ interface RampPalette {
 }
 
 // Ramps run from neutral (t=0) → extreme (t=1)
-const RAMPS: Record<'spectrum' | 'amber' | 'redwood' | 'thermal' | 'teal-violet' | 'gold-slate', RampPalette> = {
+const RAMPS: Record<'spectrum' | 'amber' | 'redwood' | 'thermal' | 'teal-violet' | 'gold-slate' | 'emerald-rose', RampPalette> = {
   // Periwinkle → blue → cyan (+) ↔ pale pink → plum (−), gray neutral
   spectrum: {
     pos: [
@@ -142,6 +143,23 @@ const RAMPS: Record<'spectrum' | 'amber' | 'redwood' | 'thermal' | 'teal-violet'
     gradient:
       'linear-gradient(to bottom, #E0B84E 0%, #C49E3C 22%, #2a2a2a 50%, #5270A8 78%, #6E8CC6 100%)',
   },
+  // Emerald (+) ↔ rose (−), gray neutral — the classic long/short-gamma convention
+  'emerald-rose': {
+    pos: [
+      [0.0, NEUTRAL],
+      [0.4, [18, 110, 84]],
+      [0.72, [16, 160, 116]],
+      [1.0, [16, 185, 129]], //  #10b981 emerald
+    ],
+    neg: [
+      [0.0, NEUTRAL],
+      [0.4, [150, 46, 64]],
+      [0.72, [214, 55, 84]],
+      [1.0, [244, 63, 94]], //   #f43f5e rose
+    ],
+    gradient:
+      'linear-gradient(to bottom, #10b981 0%, #10A074 22%, #2a2a2a 50%, #D63754 78%, #f43f5e 100%)',
+  },
 };
 
 function lerp(a: number, b: number, u: number): number {
@@ -165,9 +183,9 @@ function perceivedLuminance([r, g, b]: RGB): number {
 }
 
 /** Raw ramp color for a signed value — used by the on-chart node overlay. */
-export function heatRgb(value: number, maxAbs: number): RGB {
+export function heatRgb(value: number, maxAbs: number, mode: HeatMode = HEAT_MODE): RGB {
   const t = Math.min(1, Math.abs(value) / (maxAbs || 1));
-  const r = RAMPS[HEAT_MODE as keyof typeof RAMPS];
+  const r = (RAMPS as Record<string, RampPalette>)[mode];
   if (r) return rampColor(value >= 0 ? r.pos : r.neg, t);
   // grayscale fallback for the legacy mono/hybrid/diverging modes
   const lum = value >= 0 ? 0.3 + t * 0.6 : 0.3;
@@ -182,18 +200,19 @@ const TINT_MAX = 0.5;
 
 const ramp = RAMPS[HEAT_MODE as keyof typeof RAMPS];
 
-export function heatCellStyle(value: number, maxAbs: number): CSSProperties {
+export function heatCellStyle(value: number, maxAbs: number, mode: HeatMode = HEAT_MODE): CSSProperties {
   const t = Math.min(1, Math.abs(value) / (maxAbs || 1));
 
-  if (ramp) {
-    const rgb = rampColor(value >= 0 ? ramp.pos : ramp.neg, t);
+  const modeRamp = (RAMPS as Record<string, RampPalette>)[mode];
+  if (modeRamp) {
+    const rgb = rampColor(value >= 0 ? modeRamp.pos : modeRamp.neg, t);
     return {
       backgroundColor: `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`,
       color: perceivedLuminance(rgb) > 0.55 ? '#0a0a0a' : '#ededed',
     };
   }
 
-  if (HEAT_MODE === 'diverging') {
+  if (mode === 'diverging') {
     const alpha = 0.05 + t * 0.5;
     return {
       backgroundColor:
@@ -209,7 +228,7 @@ export function heatCellStyle(value: number, maxAbs: number): CSSProperties {
   let g = channel;
   let b = channel;
 
-  if (HEAT_MODE === 'hybrid' && t > TINT_START) {
+  if (mode === 'hybrid' && t > TINT_START) {
     const weight = ((t - TINT_START) / (1 - TINT_START)) * TINT_MAX;
     const tint = value >= 0 ? EMERALD : ROSE;
     r = lerp(r, tint[0], weight);

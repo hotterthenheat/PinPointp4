@@ -66,7 +66,7 @@ const StrikeProfile = () => {
         render: r => (
           <span
             className="inline-block px-1.5 py-0.5 rounded font-semibold"
-            style={heatCellStyle(r.net, profile?.netMaxAbs ?? 1)}
+            style={heatCellStyle(r.net, profile?.netMaxAbs ?? 1, 'emerald-rose')}
           >
             {fmtUsd(r.net)}
           </span>

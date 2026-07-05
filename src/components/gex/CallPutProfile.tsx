@@ -10,7 +10,7 @@ interface CallPutProfileProps {
 }
 
 const rgb = (v: number, max: number) => {
-  const [r, g, b] = heatRgb(v, max);
+  const [r, g, b] = heatRgb(v, max, 'emerald-rose');
   return `rgb(${r},${g},${b})`;
 };
 
