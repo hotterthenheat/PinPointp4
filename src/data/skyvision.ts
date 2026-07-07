@@ -60,14 +60,16 @@ interface ScannerProfile {
 }
 
 const PROFILES: Record<ScannerKey, ScannerProfile> = {
-  'top-opportunity': { expiry: '0DTE', swingMul: 0.38, scalpMul: 0.18, moveBias: 1.0, scoreFloor: 90 },
+  'top-setups': { expiry: '0DTE', swingMul: 0.38, scalpMul: 0.18, moveBias: 1.0, scoreFloor: 90 },
   'quick-scalp': { expiry: '0DTE', swingMul: 0.22, scalpMul: 0.1, moveBias: 0.7, scoreFloor: 88 },
   discounted: { expiry: '1DTE', swingMul: 0.6, scalpMul: 0.28, moveBias: 1.35, scoreFloor: 86 },
-  'dark-pool': { expiry: '1DTE', swingMul: 0.42, scalpMul: 0.2, moveBias: 1.1, scoreFloor: 89 },
+  rebounds: { expiry: '1DTE', swingMul: 0.45, scalpMul: 0.22, moveBias: 1.15, scoreFloor: 85 },
+  'whale-sweeps': { expiry: '0DTE', swingMul: 0.42, scalpMul: 0.2, moveBias: 1.1, scoreFloor: 89 },
+  all: { expiry: '0DTE', swingMul: 0.38, scalpMul: 0.18, moveBias: 1.0, scoreFloor: 80 },
 };
 
 const WHY_LIBRARY: Record<ScannerKey, { chips: string[]; text: (t: string, k: number) => string }> = {
-  'top-opportunity': {
+  'top-setups': {
     chips: ['TREND ALIGNED', 'DEALER SUPPORT', 'RSI CONFIRM'],
     text: (t, k) =>
       `Solid institutional buy walls are supporting price at ${k}. Market makers are heavily short this strike and must buy ${t} to stay hedged, forming an automatic protective floor under our entry.`,
@@ -82,10 +84,20 @@ const WHY_LIBRARY: Record<ScannerKey, { chips: string[]; text: (t: string, k: nu
     text: (t) =>
       `Premium is mispriced relative to the projected move. Implied vol is underpricing the expected ${t} range, giving an asymmetric payout if the move materializes.`,
   },
-  'dark-pool': {
+  rebounds: {
+    chips: ['OVERSOLD', 'STRUCTURE SUPPORT', 'MEAN REVERSION'],
+    text: (t, k) =>
+      `${t} is oversold near key support at ${k}. Price has compressed into a structure floor where dealer hedging creates a natural bounce zone. Reversal probability is elevated.`,
+  },
+  'whale-sweeps': {
     chips: ['BLOCK PRINTS', 'SMART MONEY', 'ACCUMULATION'],
     text: (t, k) =>
-      `Repeated dark-pool blocks are accumulating ${t} exposure near ${k}. Following the institutional footprint — size and persistence of prints suggest informed positioning.`,
+      `Repeated large sweep orders are accumulating ${t} exposure near ${k}. Following the institutional footprint — size and persistence of prints suggest informed positioning.`,
+  },
+  all: {
+    chips: ['MULTI-SIGNAL', 'COMPOSITE', 'BROAD SCAN'],
+    text: (t, k) =>
+      `${t} at ${k} qualifies across multiple scanner criteria. Composite scoring aggregates trend alignment, premium value, and flow signals into a single unified ranking.`,
   },
 };
 
@@ -177,6 +189,24 @@ export function makeSetup(
         ? 'BUILDING — WAIT FOR TRIGGER'
         : 'FADING — STAND ASIDE';
 
+  // Liquidity: derive from bid/ask spread
+  const spreadPct = mid > 0 ? ((ask - bid) / mid) * 100 : 0;
+  const liquidityLabel: 'Tight' | 'Normal' | 'Wide' = spreadPct <= 2 ? 'Tight' : spreadPct <= 5 ? 'Normal' : 'Wide';
+  const liquiditySpread = `${spreadPct.toFixed(1)}% spread`;
+
+  // Invalidation: nearest support/resistance based on direction
+  const invalidationOffset = spot * (0.008 + rng() * 0.012); // 0.8–2% away
+  const invalidationPrice = right === 'C'
+    ? Number((spot - invalidationOffset).toFixed(2))     // calls invalidate below
+    : Number((spot + invalidationOffset).toFixed(2));     // puts invalidate above
+  const invalidationReasons = [
+    'Dealer buy-wall support',
+    'Gamma concentration floor',
+    'Dark-pool accumulation level',
+    'Key open-interest cluster',
+  ];
+  const invalidationReason = invalidationReasons[Math.floor(rng() * invalidationReasons.length)];
+
   return {
     id: `${ticker}-${strikeLabel}-${right}-${scanner}`,
     ticker,
@@ -209,6 +239,10 @@ export function makeSetup(
     health,
     momentum,
     takeProfits: buildTakeProfits(mid, profile, rng),
+    liquidityLabel,
+    liquiditySpread,
+    invalidationPrice,
+    invalidationReason,
   };
 }
 

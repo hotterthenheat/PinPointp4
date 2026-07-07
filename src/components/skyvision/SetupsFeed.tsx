@@ -8,10 +8,12 @@ interface SetupsFeedProps {
   groups: SetupGroup[];
   shown: number;
   total: number;
+  selectedSetupId?: string | null;
+  onSelectSetup?: (setup: Setup) => void;
   onOpenAnalysis: (setup: Setup) => void;
 }
 
-const SetupsFeed = ({ groups, shown, total, onOpenAnalysis }: SetupsFeedProps) => {
+const SetupsFeed = ({ groups, shown, total, selectedSetupId, onSelectSetup, onOpenAnalysis }: SetupsFeedProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
@@ -44,7 +46,9 @@ const SetupsFeed = ({ groups, shown, total, onOpenAnalysis }: SetupsFeedProps) =
                   key={setup.id}
                   setup={setup}
                   expanded={expandedId === setup.id}
+                  isSelected={selectedSetupId === setup.id}
                   onToggle={() => setExpandedId(prev => (prev === setup.id ? null : setup.id))}
+                  onSelect={() => onSelectSetup?.(setup)}
                   onOpenAnalysis={() => onOpenAnalysis(setup)}
                 />
               ))}

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Crosshair, Compass, Layers, ClipboardCheck, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Crosshair, Compass, Layers, ClipboardCheck, Bookmark, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   path: string;
@@ -44,4 +44,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: ClipboardCheck,
     description: 'Prediction ledger & calibration accuracy',
   },
+  {
+    path: '/tracker',
+    label: 'Tracker',
+    code: '06',
+    icon: Bookmark,
+    description: 'Bookmarked setups — live monitoring & tracking',
+  },
 ];
+

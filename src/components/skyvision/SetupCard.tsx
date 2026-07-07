@@ -7,18 +7,24 @@ import type { Setup } from '../../types/skyvision';
 interface SetupCardProps {
   setup: Setup;
   expanded: boolean;
+  isSelected?: boolean;
   onToggle: () => void;
+  onSelect?: () => void;
   onOpenAnalysis: () => void;
 }
 
-const SetupCard = ({ setup, expanded, onToggle, onOpenAnalysis }: SetupCardProps) => {
+const SetupCard = ({ setup, expanded, isSelected, onToggle, onSelect, onOpenAnalysis }: SetupCardProps) => {
   const moveUp = setup.expectedMovePct >= 0;
 
   return (
-    <div className="border border-borderSubtle bg-panel rounded-md overflow-hidden">
+    <div className={`border rounded-md overflow-hidden transition-colors ${
+      isSelected
+        ? 'border-select/40 bg-select/[0.03] shadow-[inset_3px_0_0_0_rgba(56,189,248,0.5)]'
+        : 'border-borderSubtle bg-panel'
+    }`}>
       {/* Collapsed header row */}
       <button
-        onClick={onToggle}
+        onClick={() => { onSelect?.(); onToggle(); }}
         className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/[0.02] transition-colors"
       >
         <span className="inline-flex items-center rounded-full border border-bull/30 bg-bull/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-bull">

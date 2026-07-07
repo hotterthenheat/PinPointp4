@@ -7,7 +7,7 @@
 ==================================================
 */
 
-export type ScannerKey = 'top-opportunity' | 'quick-scalp' | 'discounted' | 'dark-pool';
+export type ScannerKey = 'top-setups' | 'quick-scalp' | 'discounted' | 'rebounds' | 'whale-sweeps' | 'all';
 
 export interface ScannerDef {
   key: ScannerKey;
@@ -16,10 +16,12 @@ export interface ScannerDef {
 }
 
 export const SCANNERS: ScannerDef[] = [
-  { key: 'top-opportunity', label: 'Top Opportunity', blurb: "Sky's Vision — trend + dealer-flow conviction" },
+  { key: 'top-setups', label: 'Top Setups', blurb: 'Strongest ranked — trend + dealer-flow conviction' },
   { key: 'quick-scalp', label: 'Quick Scalp', blurb: 'High-gamma, short-hold intraday pops' },
   { key: 'discounted', label: 'Discounted', blurb: 'Cheap premium vs projected move' },
-  { key: 'dark-pool', label: 'Dark Pool Follow', blurb: 'Riding institutional block accumulation' },
+  { key: 'rebounds', label: 'Rebounds', blurb: 'Oversold reversals with structure support' },
+  { key: 'whale-sweeps', label: 'Whale Sweeps', blurb: 'Large institutional sweep orders detected' },
+  { key: 'all', label: 'All', blurb: 'Every setup across all scanners' },
 ];
 
 /** The engine's read on a contract — a recommendation, never an order. */
@@ -80,6 +82,10 @@ export interface Setup {
   health: number;
   momentum: Momentum;
   takeProfits: TakeProfit[];
+  liquidityLabel: 'Tight' | 'Normal' | 'Wide';
+  liquiditySpread: string;
+  invalidationPrice: number;
+  invalidationReason: string;
 }
 
 export interface SetupGroup {
